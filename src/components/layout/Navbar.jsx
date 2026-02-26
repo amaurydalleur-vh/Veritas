@@ -1,5 +1,7 @@
 import React from "react";
+import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { NAV_PAGES } from "../../data/appData";
+import FaucetButton from "../FaucetButton";
 
 function Navbar({ page, onNavigate }) {
   return (
@@ -20,9 +22,14 @@ function Navbar({ page, onNavigate }) {
             </button>
           ))}
         </nav>
-        <button className="nav-cta" onClick={() => onNavigate("portfolio")}>
-          Connect Wallet
-        </button>
+        <div className="nav-actions">
+          <FaucetButton />
+          <ConnectButton
+            accountStatus="avatar"
+            chainStatus="icon"
+            showBalance={false}
+          />
+        </div>
       </div>
     </header>
   );

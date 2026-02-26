@@ -87,6 +87,11 @@ body {
   border-color: #c2d0e0;
   background: #f4f8fc;
 }
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
 .nav-cta {
   border: 0;
   background: linear-gradient(130deg, var(--accent), var(--accent-2));
