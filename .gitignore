@@ -1,0 +1,16 @@
+# Environment & secrets - NEVER commit
+.env
+.env.local
+
+# Build output
+dist/
+node_modules/
+
+# Hardhat
+cache/
+artifacts/
+typechain-types/
+
+# Misc
+.DS_Store
+*.log

@@ -1,0 +1,1573 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>VERITAS — Yield-Bearing Prediction Markets</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;0,9..144,700;1,9..144,300;1,9..144,600&family=Space+Mono:ital,wght@0,400;0,700;1,400&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap" rel="stylesheet"/>
+<style>
+/* --- RESET & ROOT ------------------------------------------------------- */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  /* Core palette */
+  --ink:       #080C14;
+  --ink2:      #0D1520;
+  --ink3:      #111C2A;
+  --border:    #1A2740;
+  --border2:   #223350;
+  --muted:     #3D5470;
+  --dim:       #566880;
+  --body:      #8FA8C0;
+  --text:      #C8DCF0;
+  --white:     #F0F5FF;
+  --amber:     #F0A500;
+  --amber2:    #FFD060;
+  --jade:      #00E5A0;
+  --jade2:     #00C080;
+  --crimson:   #FF3D5A;
+  --sky:       #4490D8;
+
+  /* Typography */
+  --f-display: 'Fraunces', Georgia, serif;
+  --f-sans:    'DM Sans', system-ui, sans-serif;
+  --f-mono:    'Space Mono', 'Courier New', monospace;
+
+  /* Spacing (8px grid) */
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 20px;
+  --s6: 24px; --s8: 32px; --s10: 40px; --s12: 48px; --s16: 64px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 3px rgba(0,0,0,.4);
+  --shadow-md: 0 4px 16px rgba(0,0,0,.5);
+  --shadow-lg: 0 12px 40px rgba(0,0,0,.6);
+  --glow-amber: 0 0 20px rgba(240,165,0,.25);
+  --glow-jade:  0 0 20px rgba(0,229,160,.2);
+}
+
+html,body{
+  background:var(--ink);
+  color:var(--text);
+  font-family:var(--f-sans);
+  font-size:15px;
+  line-height:1.6;
+  min-height:100vh;
+  overflow-x:hidden;
+}
+::-webkit-scrollbar{width:3px}
+::-webkit-scrollbar-track{background:var(--ink)}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+
+/* --- SCANLINE TEXTURE --------------------------------------------------- */
+body::before{
+  content:'';
+  position:fixed;inset:0;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(255,255,255,.012) 2px,rgba(255,255,255,.012) 3px);
+  pointer-events:none;z-index:9999;
+}
+
+/* --- TYPOGRAPHY --------------------------------------------------------- */
+button,input,select,textarea{font-family:var(--f-sans);color:var(--text)}
+a{color:var(--amber);text-decoration:none}
+
+/* --- ANIMATIONS --------------------------------------------------------- */
+@keyframes fadeUp    {from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn    {from{opacity:0}to{opacity:1}}
+@keyframes ticker    {0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+@keyframes pulse     {0%,100%{opacity:1}50%{opacity:.35}}
+@keyframes countUp   {from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes scanPulse {0%,100%{box-shadow:0 0 0 rgba(240,165,0,0)}50%{box-shadow:0 0 12px rgba(240,165,0,.3)}}
+@keyframes shimmer   {0%{background-position:-200% 0}100%{background-position:200% 0}}
+
+.anim-up   {animation:fadeUp .55s cubic-bezier(.22,1,.36,1) both}
+.anim-up2  {animation:fadeUp .55s cubic-bezier(.22,1,.36,1) .12s both}
+.anim-up3  {animation:fadeUp .55s cubic-bezier(.22,1,.36,1) .24s both}
+.anim-up4  {animation:fadeUp .55s cubic-bezier(.22,1,.36,1) .36s both}
+.anim-in   {animation:fadeIn .3s ease both}
+
+/* --- LAYOUT ------------------------------------------------------------- */
+.container{max-width:1200px;margin:0 auto;padding:0 var(--s6)}
+.page{padding-top:var(--s6)}
+
+/* --- NAVBAR ------------------------------------------------------------- */
+.nav{
+  position:fixed;top:0;left:0;right:0;z-index:100;
+  height:56px;
+  background:rgba(8,12,20,.92);
+  backdrop-filter:blur(24px);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;
+}
+.nav-inner{
+  max-width:1200px;margin:0 auto;padding:0 var(--s6);
+  width:100%;display:flex;align-items:center;justify-content:space-between;gap:var(--s4);
+}
+.nav-logo{
+  display:flex;align-items:center;gap:10px;
+  background:none;border:none;cursor:pointer;
+  font-family:var(--f-display);font-size:20px;font-weight:600;
+  color:var(--white);letter-spacing:-.01em;
+}
+.nav-gem{
+  width:22px;height:22px;
+  background:var(--amber);
+  clip-path:polygon(50% 0%,93% 25%,93% 75%,50% 100%,7% 75%,7% 25%);
+  box-shadow:var(--glow-amber);
+  flex-shrink:0;
+}
+.nav-links{display:flex;gap:var(--s1)}
+.nav-link{
+  background:none;border:1px solid transparent;border-radius:6px;
+  padding:6px 14px;font-size:13px;font-weight:500;color:var(--body);
+  cursor:pointer;transition:all .18s;
+}
+.nav-link:hover{color:var(--text);border-color:var(--border2)}
+.nav-link.active{color:var(--amber);border-color:rgba(240,165,0,.2);background:rgba(240,165,0,.06)}
+.nav-cta{
+  background:var(--amber);color:var(--ink);
+  border:none;border-radius:6px;padding:7px 16px;
+  font-size:13px;font-weight:600;cursor:pointer;
+  transition:all .18s;box-shadow:var(--glow-amber);
+  white-space:nowrap;
+}
+.nav-cta:hover{background:var(--amber2);transform:translateY(-1px)}
+
+/* --- TICKER ------------------------------------------------------------- */
+.ticker-bar{
+  margin-top:56px;
+  background:var(--ink2);border-bottom:1px solid var(--border);
+  height:32px;overflow:hidden;display:flex;align-items:center;
+}
+.ticker-track{
+  display:inline-flex;gap:0;
+  animation:ticker 32s linear infinite;
+  white-space:nowrap;
+}
+.ticker-item{
+  font-family:var(--f-mono);font-size:10px;
+  color:var(--dim);padding:0 20px;
+  display:flex;align-items:center;gap:8px;
+}
+.ticker-item .t-q{color:var(--body)}
+.ticker-item .t-yes{color:var(--jade)}
+.ticker-item .t-no{color:var(--crimson)}
+.ticker-sep{color:var(--border2);font-size:14px;padding:0 4px}
+
+/* --- BADGE -------------------------------------------------------------- */
+.badge{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:3px 8px;border-radius:4px;
+  font-family:var(--f-mono);font-size:10px;font-weight:400;
+  letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;
+}
+.badge-amber{background:rgba(240,165,0,.1);color:var(--amber);border:1px solid rgba(240,165,0,.2)}
+.badge-jade {background:rgba(0,229,160,.08);color:var(--jade);border:1px solid rgba(0,229,160,.2)}
+.badge-sky  {background:rgba(68,144,216,.1);color:var(--sky);border:1px solid rgba(68,144,216,.2)}
+.badge-red  {background:rgba(255,61,90,.08);color:var(--crimson);border:1px solid rgba(255,61,90,.2)}
+.badge-dim  {background:rgba(61,84,112,.15);color:var(--dim);border:1px solid var(--border)}
+
+/* --- LIVE DOT ----------------------------------------------------------- */
+.live-dot{
+  width:6px;height:6px;border-radius:50%;
+  background:var(--jade);box-shadow:var(--glow-jade);
+  display:inline-block;flex-shrink:0;
+  animation:pulse 2.2s ease infinite;
+}
+.live-dot.amber{background:var(--amber);box-shadow:var(--glow-amber)}
+
+/* --- CARD --------------------------------------------------------------- */
+.card{
+  background:var(--ink2);border:1px solid var(--border);
+  border-radius:10px;
+}
+.card:hover{border-color:var(--border2)}
+.card-hover{transition:all .18s;cursor:pointer}
+.card-hover:hover{border-color:var(--border2);background:var(--ink3);transform:translateY(-1px);box-shadow:var(--shadow-md)}
+
+/* --- STAT TILE ---------------------------------------------------------- */
+.stat-tile{padding:var(--s5) var(--s6)}
+.stat-tile .st-label{
+  font-family:var(--f-mono);font-size:10px;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px;display:block;
+}
+.stat-tile .st-value{
+  font-family:var(--f-mono);font-size:24px;font-weight:700;
+  color:var(--white);line-height:1;margin-bottom:4px;display:block;
+}
+.stat-tile .st-sub{font-size:11px;color:var(--muted);font-family:var(--f-mono)}
+.stat-tile.amber .st-value{color:var(--amber)}
+.stat-tile.jade  .st-value{color:var(--jade)}
+
+/* --- BUTTONS -----------------------------------------------------------  */
+.btn{
+  border-radius:7px;font-weight:600;font-size:14px;cursor:pointer;
+  transition:all .18s;border:none;display:inline-flex;align-items:center;
+  justify-content:center;gap:8px;white-space:nowrap;
+}
+.btn-primary{
+  background:var(--amber);color:var(--ink);padding:11px 24px;
+  box-shadow:var(--glow-amber);
+}
+.btn-primary:hover{background:var(--amber2);transform:translateY(-1px);box-shadow:0 0 28px rgba(240,165,0,.4)}
+.btn-secondary{background:var(--ink3);border:1px solid var(--border2);color:var(--text);padding:10px 22px}
+.btn-secondary:hover{border-color:var(--muted);color:var(--white)}
+.btn-ghost{background:transparent;border:1px solid var(--border);color:var(--body);padding:6px 14px;font-size:13px}
+.btn-ghost:hover{border-color:var(--border2);color:var(--text)}
+.btn-ghost.active{background:rgba(240,165,0,.08);border-color:rgba(240,165,0,.25);color:var(--amber)}
+.btn-yes{background:rgba(0,229,160,.12);border:1px solid rgba(0,229,160,.35);color:var(--jade);padding:10px;font-size:15px;font-family:var(--f-mono);font-weight:700}
+.btn-yes.active{background:rgba(0,229,160,.2);border-color:var(--jade);box-shadow:var(--glow-jade)}
+.btn-no{background:rgba(255,61,90,.1);border:1px solid rgba(255,61,90,.3);color:var(--crimson);padding:10px;font-size:15px;font-family:var(--f-mono);font-weight:700}
+.btn-no.active{background:rgba(255,61,90,.18);border-color:var(--crimson)}
+
+/* --- INPUTS ------------------------------------------------------------  */
+.inp{
+  width:100%;padding:10px 14px;
+  background:var(--ink);border:1px solid var(--border2);border-radius:6px;
+  font-size:15px;outline:none;color:var(--white);
+  transition:border-color .15s;
+}
+.inp:focus{border-color:rgba(240,165,0,.5)}
+.inp::placeholder{color:var(--muted)}
+.inp-label{font-family:var(--f-mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px;display:block}
+
+/* --- PROGRESS BAR ------------------------------------------------------  */
+.prog-track{height:4px;background:var(--border);border-radius:2px;overflow:hidden}
+.prog-fill{height:100%;border-radius:2px;background:linear-gradient(90deg,var(--amber),var(--amber2));transition:width .6s ease}
+.prog-fill.jade{background:linear-gradient(90deg,var(--jade2),var(--jade))}
+
+/* --- SPARKLINE ---------------------------------------------------------  */
+.spk{display:block;overflow:visible}
+
+/* --- TABS --------------------------------------------------------------  */
+.tab-bar{display:flex;border-bottom:1px solid var(--border);gap:0}
+.tab-btn{
+  padding:10px 18px;background:none;border:none;
+  border-bottom:2px solid transparent;color:var(--muted);
+  font-family:var(--f-sans);font-weight:500;font-size:13px;
+  cursor:pointer;transition:all .15s;margin-bottom:-1px;text-transform:capitalize;
+}
+.tab-btn:hover{color:var(--text)}
+.tab-btn.active{color:var(--amber);border-bottom-color:var(--amber)}
+
+/* --- TABLE -------------------------------------------------------------  */
+.tbl{width:100%;border-collapse:collapse}
+.tbl th{
+  padding:8px 16px;text-align:left;
+  font-family:var(--f-mono);font-size:10px;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.08em;font-weight:400;
+  border-bottom:1px solid var(--border);
+}
+.tbl th.r,.tbl td.r{text-align:right}
+.tbl td{padding:12px 16px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:middle}
+.tbl tbody tr{transition:background .15s}
+.tbl tbody tr:hover{background:rgba(255,255,255,.02)}
+.tbl tbody tr:last-child td{border-bottom:none}
+
+/* --- ORDER BOOK ---------------------------------------------------------  */
+.ob-row{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:5px 10px;border-radius:3px;margin-bottom:2px;
+  font-family:var(--f-mono);font-size:12px;position:relative;overflow:hidden;
+}
+.ob-fill{position:absolute;top:0;bottom:0;left:0;border-radius:3px}
+
+/* --- LANDING PAGE ------------------------------------------------------  */
+.hero{
+  padding:var(--s16) 0 var(--s12);
+  text-align:center;position:relative;
+}
+.hero-eyebrow{
+  display:inline-flex;align-items:center;gap:8px;
+  margin-bottom:var(--s6);
+}
+.hero-headline{
+  font-family:var(--f-display);
+  font-size:clamp(52px,9vw,108px);
+  font-weight:600;line-height:.92;letter-spacing:-.03em;
+  color:var(--white);margin-bottom:var(--s6);
+}
+.hero-headline em{
+  font-style:italic;font-weight:300;
+  background:linear-gradient(135deg,var(--amber) 0%,var(--amber2) 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+}
+.hero-sub{
+  font-size:17px;color:var(--body);max-width:540px;margin:0 auto var(--s8);
+  line-height:1.7;font-weight:300;
+}
+.hero-cta-row{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.hero-stats{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:1px;
+  background:var(--border);border:1px solid var(--border);border-radius:10px;
+  overflow:hidden;margin-top:var(--s12);
+}
+.hs-item{background:var(--ink2);padding:var(--s5) var(--s6);text-align:center}
+.hs-val{font-family:var(--f-mono);font-size:22px;font-weight:700;color:var(--amber);display:block}
+.hs-lbl{font-size:11px;color:var(--muted);font-family:var(--f-mono);text-transform:uppercase;letter-spacing:.08em}
+
+/* Background geometry */
+.bg-geo{
+  position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden;
+}
+.bg-geo::before{
+  content:'';position:absolute;
+  width:700px;height:700px;border-radius:50%;
+  background:radial-gradient(circle,rgba(240,165,0,.04) 0%,transparent 70%);
+  top:-200px;left:-200px;
+}
+.bg-geo::after{
+  content:'';position:absolute;
+  width:600px;height:600px;border-radius:50%;
+  background:radial-gradient(circle,rgba(0,229,160,.03) 0%,transparent 70%);
+  bottom:-150px;right:-100px;
+}
+.bg-grid{
+  position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.025;
+  background-image:linear-gradient(var(--border) 1px,transparent 1px),
+    linear-gradient(90deg,var(--border) 1px,transparent 1px);
+  background-size:64px 64px;
+}
+
+/* Feature grid */
+.feat-grid{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:1px;
+  background:var(--border);border:1px solid var(--border);border-radius:10px;
+  overflow:hidden;margin-top:var(--s4);
+}
+.feat-cell{
+  background:var(--ink2);padding:var(--s6);
+  transition:background .2s;
+}
+.feat-cell:hover{background:var(--ink3)}
+.feat-icon{font-size:20px;margin-bottom:var(--s3);display:block}
+.feat-title{font-weight:600;font-size:14px;color:var(--white);margin-bottom:6px}
+.feat-desc{font-size:12px;color:var(--muted);line-height:1.65}
+.feat-tag{margin-top:var(--s3)}
+
+/* --- MARKETS PAGE ------------------------------------------------------  */
+.mkt-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px}
+
+.mkt-card{
+  background:var(--ink2);border:1px solid var(--border);border-radius:10px;
+  padding:var(--s5);cursor:pointer;transition:all .18s;position:relative;overflow:hidden;
+}
+.mkt-card:hover{border-color:var(--border2);background:var(--ink3);transform:translateY(-2px);box-shadow:var(--shadow-md)}
+.mkt-card.ignition{border-top:2px solid var(--amber)}
+.mkt-card-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;gap:8px}
+.mkt-badges{display:flex;gap:5px;flex-wrap:wrap;flex:1}
+.mkt-meta{font-family:var(--f-mono);font-size:10px;color:var(--muted);white-space:nowrap;flex-shrink:0}
+.mkt-q{font-size:13px;font-weight:500;line-height:1.5;color:var(--white);margin-bottom:12px}
+.mkt-prices{display:flex;gap:7px;margin-bottom:10px}
+.mkt-price{
+  flex:1;border-radius:6px;padding:8px;text-align:center;
+  display:flex;flex-direction:column;align-items:center;gap:2px;
+}
+.mkt-price.yes{background:rgba(0,229,160,.07);border:1px solid rgba(0,229,160,.18)}
+.mkt-price.no {background:rgba(255,61,90,.06);border:1px solid rgba(255,61,90,.18)}
+.mkt-price-val{font-family:var(--f-mono);font-size:19px;font-weight:700;line-height:1}
+.mkt-price.yes .mkt-price-val{color:var(--jade)}
+.mkt-price.no  .mkt-price-val{color:var(--crimson)}
+.mkt-price-lbl{font-family:var(--f-mono);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.mkt-skew{margin-bottom:6px}
+.mkt-skew-bar{display:flex;height:3px;border-radius:2px;overflow:hidden;margin-bottom:4px}
+.mkt-skew-yes{background:rgba(0,229,160,.5)}
+.mkt-skew-no {background:rgba(255,61,90,.4);flex:1}
+.mkt-skew-labels{display:flex;justify-content:space-between}
+.mkt-skew-labels span{font-family:var(--f-mono);font-size:9px}
+.mkt-footer{display:flex;justify-content:space-between;padding-top:10px;margin-top:6px;border-top:1px solid var(--border)}
+.mkt-stat{display:flex;flex-direction:column;gap:2px}
+.mkt-stat-val{font-family:var(--f-mono);font-size:12px;font-weight:700;color:var(--text)}
+.mkt-stat-val.amber{color:var(--amber)}
+.mkt-stat-lbl{font-family:var(--f-mono);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.mkt-spk{position:absolute;bottom:8px;right:8px;opacity:.22;pointer-events:none}
+
+/* Ignition progress */
+.ign-prog{margin-bottom:8px}
+.ign-prog-top{display:flex;justify-content:space-between;margin-bottom:4px}
+.ign-prog-label{font-family:var(--f-mono);font-size:10px;color:var(--muted)}
+.ign-prog-val{font-family:var(--f-mono);font-size:10px;color:var(--amber)}
+
+/* --- MARKET DETAIL -----------------------------------------------------  */
+.detail-layout{display:grid;grid-template-columns:1fr 340px;gap:var(--s5)}
+.detail-left{}
+.detail-right{position:sticky;top:70px;align-self:start}
+
+.chart-card{padding:var(--s5);margin-bottom:var(--s4)}
+.chart-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:var(--s4)}
+.chart-price{font-family:var(--f-mono);font-size:32px;font-weight:700;color:var(--jade);line-height:1}
+.chart-change{font-family:var(--f-mono);font-size:12px;margin-top:4px}
+.chart-meta{text-align:right}
+.chart-meta-val{font-family:var(--f-mono);font-size:16px;font-weight:700;color:var(--white)}
+.chart-meta-lbl{font-family:var(--f-mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+
+/* Trade panel */
+.trade-panel{background:var(--ink2);border:1px solid var(--border);border-radius:10px;padding:var(--s5)}
+.trade-title{font-weight:600;font-size:15px;margin-bottom:var(--s4);color:var(--white)}
+.side-toggle{display:flex;gap:7px;margin-bottom:var(--s4)}
+.side-toggle button{flex:1;border-radius:6px;padding:10px;font-weight:700;font-size:14px;font-family:var(--f-mono);cursor:pointer;transition:all .15s}
+.quick-amounts{display:flex;gap:5px;margin-bottom:var(--s4)}
+.quick-amounts button{flex:1;padding:4px;background:var(--ink);border:1px solid var(--border);border-radius:4px;font-size:10px;color:var(--muted);font-family:var(--f-mono);cursor:pointer;transition:all .13s}
+.quick-amounts button:hover{border-color:var(--border2);color:var(--text)}
+.trade-summary{background:var(--ink);border-radius:6px;padding:var(--s4);margin-bottom:var(--s4)}
+.ts-row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-family:var(--f-mono);font-size:12px}
+.ts-row:last-child{border-bottom:none}
+.ts-key{color:var(--dim)}
+.ts-val{color:var(--text)}
+.ts-val.amber{color:var(--amber);font-weight:700}
+.ts-val.jade{color:var(--jade)}
+.vals-box{padding:10px 12px;border-radius:6px;margin-bottom:var(--s4);font-size:12px;font-family:var(--f-mono)}
+.vals-box.safe{background:rgba(0,229,160,.05);border:1px solid rgba(0,229,160,.15)}
+.vals-box.warn{background:rgba(240,165,0,.06);border:1px solid rgba(240,165,0,.2)}
+.vals-box.danger{background:rgba(255,61,90,.07);border:1px solid rgba(255,61,90,.2)}
+.vals-title{font-weight:700;margin-bottom:3px}
+.vals-sub{color:var(--dim)}
+.minority-badge{
+  background:rgba(240,165,0,.06);border:1px solid rgba(240,165,0,.2);
+  border-radius:6px;padding:8px 12px;margin-bottom:var(--s4);
+  font-family:var(--f-mono);font-size:11px;color:var(--amber);
+}
+.buy-btn{
+  width:100%;padding:13px;border-radius:7px;border:none;
+  font-weight:700;font-size:15px;cursor:pointer;transition:all .18s;
+  box-shadow:var(--shadow-sm);
+}
+.buy-btn.yes{background:linear-gradient(135deg,#00C080,#00E5A0);color:var(--ink)}
+.buy-btn.yes:hover{box-shadow:var(--glow-jade);transform:translateY(-1px)}
+.buy-btn.no{background:linear-gradient(135deg,#CC2040,#FF3D5A);color:white}
+.buy-btn.no:hover{transform:translateY(-1px)}
+.trade-footer{text-align:center;font-family:var(--f-mono);font-size:10px;color:var(--muted);margin-top:10px}
+
+/* Yield breakdown */
+.yield-bar{display:flex;flex-direction:column;gap:10px}
+.yb-row{}
+.yb-top{display:flex;justify-content:space-between;margin-bottom:4px;font-size:13px}
+.yb-label{font-weight:500;color:var(--text)}
+.yb-value{font-family:var(--f-mono);font-weight:700}
+.yb-detail{font-size:11px;color:var(--muted);margin-bottom:4px}
+.yb-prog{height:3px;background:var(--border);border-radius:2px;overflow:hidden}
+.yb-prog-fill{height:100%;border-radius:2px}
+
+/* --- IGNITION PAGE -----------------------------------------------------  */
+.ign-layout{display:grid;grid-template-columns:1fr 360px;gap:var(--s5)}
+.wizard-card{background:var(--ink2);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.wizard-steps{display:flex;border-bottom:1px solid var(--border)}
+.ws-item{
+  flex:1;padding:12px var(--s4);text-align:center;
+  border-bottom:2px solid transparent;transition:all .15s;cursor:pointer;
+}
+.ws-item.active{border-bottom-color:var(--amber);background:rgba(240,165,0,.04)}
+.ws-num{font-family:var(--f-mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px}
+.ws-label{font-size:13px;font-weight:600;color:var(--muted)}
+.ws-item.active .ws-label{color:var(--white)}
+.ws-item.done .ws-label{color:var(--jade)}
+.wizard-body{padding:var(--s6)}
+.cat-grid{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:var(--s5)}
+.cat-btn{padding:5px 13px;border-radius:5px;font-size:12px;font-weight:600;font-family:var(--f-mono);cursor:pointer;transition:all .15s;background:var(--ink);border:1px solid var(--border);color:var(--muted)}
+.cat-btn.active{background:var(--amber);color:var(--ink);border-color:var(--amber)}
+.oracle-option{
+  padding:12px 14px;border-radius:7px;cursor:pointer;
+  background:var(--ink);border:1px solid var(--border);
+  margin-bottom:6px;transition:all .15s;
+}
+.oracle-option.active{border-color:rgba(240,165,0,.4);background:rgba(240,165,0,.05)}
+.oracle-option-inner{display:flex;align-items:center;gap:12px}
+.oracle-radio{
+  width:15px;height:15px;border-radius:50%;
+  border:2px solid var(--border2);flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+}
+.oracle-radio.active{border-color:var(--amber)}
+.oracle-radio-dot{width:7px;height:7px;border-radius:50%;background:var(--amber)}
+.oracle-info{flex:1}
+.oracle-name{font-size:13px;font-weight:600;color:var(--white);margin-bottom:2px}
+.oracle-desc{font-size:11px;color:var(--muted)}
+.cost-box{background:rgba(240,165,0,.05);border:1px solid rgba(240,165,0,.2);border-radius:8px;padding:var(--s4);margin-bottom:var(--s5)}
+.cost-row{display:flex;justify-content:space-between;font-size:12px;font-family:var(--f-mono);padding:3px 0;color:var(--muted)}
+.cost-total{display:flex;justify-content:space-between;font-size:14px;font-family:var(--f-mono);font-weight:700;padding-top:8px;margin-top:4px;border-top:1px solid rgba(240,165,0,.2)}
+.wizard-footer{display:flex;gap:10px;justify-content:flex-end;padding-top:var(--s5);border-top:1px solid var(--border);margin-top:var(--s5)}
+.success-state{padding:var(--s10);text-align:center}
+.success-icon{font-size:48px;margin-bottom:var(--s4)}
+.success-title{font-family:var(--f-display);font-size:28px;font-weight:600;color:var(--jade);margin-bottom:8px}
+.success-sub{color:var(--body);margin-bottom:var(--s6);line-height:1.6}
+.success-box{background:var(--ink);border-radius:8px;padding:var(--s4);margin-bottom:var(--s5);text-align:left}
+
+/* Ignition sidebar */
+.ign-sidebar{}
+.active-ign-card{background:var(--ink);border:1px solid var(--border);border-radius:7px;padding:12px;margin-bottom:8px;cursor:pointer;transition:all .15s}
+.active-ign-card:hover{border-color:rgba(240,165,0,.3)}
+.aig-q{font-size:12px;font-weight:500;color:var(--white);line-height:1.4;margin-bottom:7px}
+.how-section{background:var(--ink2);border:1px solid var(--border);border-radius:10px;padding:var(--s5)}
+.how-row{display:flex;gap:12px;padding-bottom:12px;margin-bottom:12px;border-bottom:1px solid var(--border)}
+.how-row:last-child{border-bottom:none;padding-bottom:0;margin-bottom:0}
+.how-num{font-family:var(--f-mono);font-weight:700;color:var(--amber);font-size:13px;flex-shrink:0}
+.how-title{font-size:13px;font-weight:600;margin-bottom:3px;color:var(--white)}
+.how-desc{font-size:12px;color:var(--muted);line-height:1.55}
+
+/* --- PORTFOLIO ---------------------------------------------------------  */
+.portfolio-layout{display:grid;grid-template-columns:1fr 320px;gap:var(--s5)}
+.pnl-positive{color:var(--jade)}
+.pnl-negative{color:var(--crimson)}
+
+/* --- DOCS --------------------------------------------------------------  */
+.docs-layout{max-width:780px;margin:0 auto}
+.doc-section{margin-bottom:var(--s8);padding-bottom:var(--s8);border-bottom:1px solid var(--border)}
+.doc-section:last-child{border-bottom:none}
+.doc-eyebrow{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.doc-num{font-family:var(--f-mono);color:var(--amber);font-size:13px}
+.doc-h{font-family:var(--f-display);font-size:20px;font-weight:600;color:var(--white);line-height:1.2}
+.doc-p{color:var(--body);line-height:1.8;font-size:14px;font-weight:300}
+.compare-table{width:100%;border-collapse:collapse;font-size:12px;font-family:var(--f-mono)}
+.compare-table th{padding:8px 12px;background:var(--ink3);color:var(--muted);text-align:center;font-weight:400;text-transform:uppercase;letter-spacing:.06em;font-size:10px}
+.compare-table th:first-child{text-align:left}
+.compare-table td{padding:9px 12px;border-bottom:1px solid var(--border);text-align:center;color:var(--muted)}
+.compare-table td:first-child{text-align:left;color:var(--text);font-weight:500}
+.compare-table td.yes{color:var(--jade)}
+.compare-table td.veritas{color:var(--amber);font-weight:700}
+
+/* --- PAGE SECTIONS -----------------------------------------------------  */
+.page-header{margin-bottom:var(--s6)}
+.page-title{font-family:var(--f-display);font-size:clamp(24px,4vw,36px);font-weight:600;color:var(--white);margin-bottom:4px;line-height:1.1}
+.page-sub{color:var(--body);font-size:14px;font-weight:300}
+.filter-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--s4);flex-wrap:wrap;gap:10px}
+.filter-group{display:flex;gap:5px;flex-wrap:wrap}
+
+/* --- SECTION LABEL -----------------------------------------------------  */
+.section-label{font-family:var(--f-mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:var(--s4)}
+
+/* --- HELPERS -----------------------------------------------------------  */
+.flex{display:flex}.flex-between{display:flex;justify-content:space-between;align-items:center}
+.gap-2{gap:var(--s2)}.gap-3{gap:var(--s3)}.gap-4{gap:var(--s4)}
+.mt-4{margin-top:var(--s4)}.mt-5{margin-top:var(--s5)}.mt-6{margin-top:var(--s6)}
+.mb-3{margin-bottom:var(--s3)}.mb-4{margin-bottom:var(--s4)}.mb-5{margin-bottom:var(--s5)}.mb-6{margin-bottom:var(--s6)}
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.w100{width:100%}.text-mono{font-family:var(--f-mono)}.text-right{text-align:right}
+.text-amber{color:var(--amber)}.text-jade{color:var(--jade)}.text-muted{color:var(--muted)}.text-white{color:var(--white)}
+.text-sm{font-size:12px}.text-xs{font-size:11px}
+.divider{height:1px;background:var(--border);margin:var(--s4) 0}
+</style>
+</head>
+<body>
+<div class="bg-geo"></div>
+<div class="bg-grid"></div>
+<div id="app"></div>
+
+<script>
+'use strict';
+// --- UTILITIES ----------------------------------------------------------------
+const $ = (sel, ctx=document) => ctx.querySelector(sel);
+const $$ = (sel, ctx=document) => [...ctx.querySelectorAll(sel)];
+const el = (tag, attrs={}, ...children) => {
+  const e = document.createElement(tag);
+  for (const [k,v] of Object.entries(attrs)) {
+    if (k === 'class') e.className = v;
+    else if (k === 'style' && typeof v === 'object') Object.assign(e.style, v);
+    else if (k.startsWith('on')) e.addEventListener(k.slice(2).toLowerCase(), v);
+    else e.setAttribute(k, v);
+  }
+  children.flat().forEach(c => {
+    if (c == null || c === false) return;
+    e.appendChild(typeof c === 'string' || typeof c === 'number'
+      ? document.createTextNode(String(c)) : c);
+  });
+  return e;
+};
+const svgEl = (tag, attrs={}) => {
+  const e = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for (const [k,v] of Object.entries(attrs)) e.setAttribute(k,v);
+  return e;
+};
+
+const fmt = {
+  usd: v => v >= 1e6 ? `$${(v/1e6).toFixed(2)}M` : v >= 1e3 ? `$${(v/1e3).toFixed(0)}K` : `$${v}`,
+  pct: v => `${(v*100).toFixed(0)}¢`,
+  apy: v => `${v.toFixed(1)}%`,
+};
+
+// --- STATE --------------------------------------------------------------------
+let state = { page: 'landing', market: null };
+const listeners = [];
+const setState = updates => { Object.assign(state, updates); listeners.forEach(f=>f()); };
+const onState = f => listeners.push(f);
+
+// --- MOCK DATA ----------------------------------------------------------------
+const MARKETS = [
+  {id:1,phase:'core',category:'CRYPTO',question:'Will Bitcoin exceed $150,000 before end of Q2 2026?',yes:0.68,no:0.32,tvl:4200000,vol:890000,skew:68,days:47,participants:1240,minApy:122.9,majApy:11.2,history:[52,55,58,61,59,63,65,67,66,68]},
+  {id:2,phase:'core',category:'POLITICS',question:'Will the EU pass the AI Liability Directive before June 2026?',yes:0.41,no:0.59,tvl:1850000,vol:320000,skew:41,days:118,participants:640,minApy:94.3,majApy:8.7,history:[55,52,49,45,43,44,42,41,40,41]},
+  {id:3,phase:'core',category:'MACRO',question:'Will the Fed cut rates at least twice before September 2026?',yes:0.73,no:0.27,tvl:7100000,vol:1400000,skew:73,days:210,participants:2180,minApy:138.4,majApy:14.1,history:[60,62,65,68,71,70,72,74,73,73]},
+  {id:4,phase:'ignition',category:'SPORTS',question:'Will Real Madrid win the Champions League 2025/26 season?',yes:0.61,no:0.39,tvl:6800,vol:12000,skew:61,days:24,participants:42,participantsTarget:30,minApy:0,majApy:0,history:[50,53,55,58,60,62,61,61,60,61],tvlTarget:10000,escrow:360},
+  {id:5,phase:'core',category:'TECH',question:'Will OpenAI release GPT-5 before Anthropic releases Claude 4?',yes:0.38,no:0.62,tvl:920000,vol:180000,skew:38,days:65,participants:890,minApy:108.7,majApy:9.3,history:[55,50,47,44,41,40,38,37,38,38]},
+  {id:6,phase:'core',category:'CRYPTO',question:'Will Ethereum flip Bitcoin by market cap in 2026?',yes:0.22,no:0.78,tvl:3400000,vol:560000,skew:22,days:308,participants:1560,minApy:185.2,majApy:12.8,history:[30,28,26,25,24,23,22,21,22,22]},
+];
+
+const PORTFOLIO = {
+  value: 48320, pnl: 6840, pnlPct: 16.5,
+  yieldTotal: 6840,
+  positions: [
+    {mktId:1,side:'YES',cost:12000,value:14200,apy:122.9,pnl:2200},
+    {mktId:3,side:'NO', cost:8000, value:10100,apy:138.4,pnl:2100},
+    {mktId:5,side:'YES',cost:15000,value:17400,apy:108.7,pnl:2400},
+    {mktId:6,side:'NO', cost:5000, value:6620, apy:185.2,pnl:1620},
+  ],
+  yields: {rwa:1240,fees:3890,gravity:1420,vals:290},
+  apyHistory: [{l:'D-6',v:98},{l:'D-5',v:104},{l:'D-4',v:112},{l:'D-3',v:119},{l:'D-2',v:115},{l:'D-1',v:128},{l:'Today',v:134}],
+};
+
+// --- SVG HELPERS -------------------------------------------------------------
+function sparkline(data, w, h, stroke, fillColor=null) {
+  const min = Math.min(...data), max = Math.max(...data), range = max-min||1;
+  const pts = data.map((v,i) => [i/(data.length-1)*w, h-4-(v-min)/range*(h-8)]);
+  const d = pts.map((p,i) => `${i?'L':'M'}${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
+  const svg = svgEl('svg',{width:w,height:h,viewBox:`0 0 ${w} ${h}`,'class':'spk'});
+  if (fillColor) {
+    const fp = svgEl('path',{d:d+` L${w},${h} L0,${h} Z`,fill:fillColor,opacity:'0.1'});
+    svg.appendChild(fp);
+  }
+  const p = svgEl('path',{d,fill:'none',stroke,strokeWidth:'1.5',strokeLinejoin:'round'});
+  svg.appendChild(p);
+  return svg;
+}
+
+function barChart(data, w, h, color) {
+  const max = Math.max(...data.map(d=>d.v));
+  const gap = w/data.length, bw = gap*.6;
+  const svg = svgEl('svg',{width:w,height:h+18,viewBox:`0 0 ${w} ${h+18}`});
+  data.forEach((d,i) => {
+    const bh = Math.max((d.v/max)*(h-6), 2);
+    const r = svgEl('rect',{x:gap*i+(gap-bw)/2,y:h-bh,width:bw,height:bh,fill:color,rx:'2',opacity:'0.85'});
+    const t = svgEl('text',{x:gap*i+gap/2,y:h+13,'text-anchor':'middle','font-size':'9','fill':'#566880','font-family':'Space Mono'});
+    t.textContent = d.l;
+    svg.appendChild(r); svg.appendChild(t);
+  });
+  return svg;
+}
+
+// --- SHARED COMPONENTS -------------------------------------------------------
+function Badge(text, variant='sky') {
+  const cls = {sky:'badge-sky',amber:'badge-amber',jade:'badge-jade',red:'badge-red',dim:'badge-dim'}[variant]||'badge-sky';
+  return el('span',{'class':`badge ${cls}`}, text);
+}
+function LiveDot(variant='jade') {
+  return el('span',{'class':`live-dot${variant==='amber'?' amber':''}`});
+}
+function Card(children, cls='', p='p5') {
+  const d = el('div',{'class':`card ${cls}`});
+  children.forEach(c => c && d.appendChild(c));
+  return d;
+}
+function SectionLabel(text) {
+  return el('div',{'class':'section-label'}, text);
+}
+function Divider() { return el('div',{'class':'divider'}); }
+
+// --- NAVBAR -------------------------------------------------------------------
+function Navbar() {
+  const nav = el('nav',{'class':'nav'});
+  const inner = el('div',{'class':'nav-inner'});
+
+  const logo = el('button',{'class':'nav-logo', onClick:()=>navigate('landing')},
+    el('div',{'class':'nav-gem'}),
+    el('span',{}, 'VERITAS')
+  );
+
+  const links = el('div',{'class':'nav-links'});
+  const pages = [['markets','Markets'],['ignition','Ignition'],['portfolio','Portfolio'],['docs','Litepaper']];
+  const btnMap = {};
+  pages.forEach(([id,label]) => {
+    const btn = el('button',{'class':'nav-link', onClick:()=>navigate(id)}, label);
+    btnMap[id] = btn;
+    links.appendChild(btn);
+  });
+
+  const cta = el('button',{'class':'nav-cta', onClick:()=>navigate('portfolio')}, 'Connect Wallet');
+
+  inner.appendChild(logo); inner.appendChild(links); inner.appendChild(cta);
+  nav.appendChild(inner);
+
+  onState(() => {
+    pages.forEach(([id]) => {
+      if (btnMap[id]) btnMap[id].className = `nav-link${state.page===id?' active':''}`;
+    });
+  });
+  return nav;
+}
+
+// --- TICKER ------------------------------------------------------------------
+function Ticker() {
+  const bar = el('div',{'class':'ticker-bar'});
+  const items = MARKETS.map(m =>
+    `<span class="ticker-item"><span class="t-q">${m.question.slice(0,40)}…</span><span class="t-yes">${(m.yes*100).toFixed(0)}¢ YES</span><span class="ticker-sep">·</span><span class="t-no">${(m.no*100).toFixed(0)}¢ NO</span></span><span class="ticker-sep">?</span>`
+  ).join('');
+  const track = el('div',{'class':'ticker-track'});
+  track.innerHTML = items.repeat(4);
+  bar.appendChild(track);
+  return bar;
+}
+
+// --- NAVIGATE ----------------------------------------------------------------
+function navigate(page, market=null) {
+  setState({page, market: market||state.market});
+  window.scrollTo({top:0,behavior:'instant'});
+}
+
+// --- LANDING -----------------------------------------------------------------
+function Landing() {
+  const wrap = el('div',{'class':'container page'});
+
+  // Hero
+  const hero = el('div',{'class':'hero anim-up'});
+  const eyebrow = el('div',{'class':'hero-eyebrow'});
+  eyebrow.appendChild(LiveDot());
+  eyebrow.appendChild(Badge('Live on Base Testnet','jade'));
+  eyebrow.appendChild(el('span',{'class':'badge badge-dim'}, 'v1.0 POC'));
+
+  const headline = el('h1',{'class':'hero-headline'});
+  headline.innerHTML = `Predict.<br><em>Earn yield.</em><br>Repeat.`;
+
+  const sub = el('p',{'class':'hero-sub'});
+  sub.innerHTML = `The first prediction market where minority LPs earn <strong style="color:var(--amber)">Treasury-grade yield</strong> through RWA gravity redistribution — fully permissionless, anti-manipulation by design.`;
+
+  const ctaRow = el('div',{'class':'hero-cta-row'});
+  const btn1 = el('button',{'class':'btn btn-primary','onClick':()=>navigate('markets')}, 'Explore Markets ?');
+  const btn2 = el('button',{'class':'btn btn-secondary','onClick':()=>navigate('ignition')}, '?? Launch a Market — $50');
+  ctaRow.appendChild(btn1); ctaRow.appendChild(btn2);
+
+  hero.appendChild(eyebrow); hero.appendChild(headline);
+  hero.appendChild(sub); hero.appendChild(ctaRow);
+
+  // Stats
+  const statsGrid = el('div',{'class':'hero-stats anim-up2'});
+  [['$24.7M','Total Value Locked'],['47','Active Markets'],['127%','Avg Minority APY'],['$182M','Total Volume']].forEach(([val,lbl]) => {
+    const item = el('div',{'class':'hs-item'});
+    item.appendChild(el('span',{'class':'hs-val'}, val));
+    item.appendChild(el('span',{'class':'hs-lbl'}, lbl));
+    statsGrid.appendChild(item);
+  });
+
+  hero.appendChild(statsGrid);
+  wrap.appendChild(hero);
+
+  // Features
+  const featSection = el('div',{'class':'anim-up3', style:{marginTop:'var(--s8)'}});
+  featSection.appendChild(SectionLabel('Core Innovations'));
+
+  const grid = el('div',{'class':'feat-grid'});
+  const feats = [
+    ['?','RWA Gravity','amber','Core Innovation','100% of Treasury bill yield redistributed from majority to minority using exponential gravity approaching settlement. Boost up to 4.75×.'],
+    ['?','Veritas Ignition','amber','$50 Launch','Create any prediction market for $50 with zero protocol subsidies. Anti-hype escrow injection prevents pump-and-dump at graduation.'],
+    ['?','VALS Protection','jade','Anti-Toxic Flow','Bounded exponential slippage capped at 50% maximum. Adaptive circuit breakers distinguish genuine news events from toxic arbitrage.'],
+    ['?','Yield-Bearing Orders','jade','Industry First','Passive limit orders earn 5% APY on underlying capital while waiting to execute. Your capital works before your trade even fills.'],
+    ['?','Inverse LP Fees','amber','Minority Premium','At 80/20 skew, minority LPs capture 80% of fees — not 20%. Fee weight is inverted by position size, rewarding contrarian risk.'],
+    ['?','Dutch Auction Launch','jade','Fair Discovery','Sealed-bid bootstrapping prevents front-running on new markets. Median clearing price ensures fair price discovery with instant depth.'],
+  ];
+  feats.forEach(([icon,title,col,tag,desc]) => {
+    const cell = el('div',{'class':'feat-cell'});
+    cell.appendChild(el('span',{'class':'feat-icon'}, icon));
+    cell.appendChild(el('div',{'class':'feat-title'}, title));
+    cell.appendChild(el('p',{'class':'feat-desc'}, desc));
+    const tagEl = el('div',{'class':'feat-tag'});
+    tagEl.appendChild(Badge(tag, col));
+    cell.appendChild(tagEl);
+    grid.appendChild(cell);
+  });
+  featSection.appendChild(grid);
+  wrap.appendChild(featSection);
+
+  // How APY works callout
+  const apyCallout = el('div',{'class':'card anim-up4', style:{padding:'var(--s6)',marginTop:'var(--s8)',background:'rgba(13,21,32,0.8)',borderColor:'rgba(240,165,0,.15)'}});
+  apyCallout.innerHTML = `
+    <div class="flex-between mb-4">
+      <div class="section-label" style="margin-bottom:0">Example: 7-day market · $10M TVL · 80/20 skew</div>
+      <span class="badge badge-amber">Economic Model</span>
+    </div>
+    <div class="grid-4" style="gap:1px;background:var(--border);border:1px solid var(--border);border-radius:8px;overflow:hidden">
+      ${[['RWA Gravity','15.5% APY','Treasury yield redistributed'],['Inverse LP Fees','70.4% APY','0.7% of volume, inverse-weighted'],['Gravity Boost','32.8% APY','Net directional flow incentive'],['VALS Capture','4.2% APY','100% of toxic flow penalties']].map(([t,v,s])=>`<div style="background:var(--ink2);padding:var(--s4)"><div class="text-mono text-xs text-muted mb-3">${t}</div><div class="text-mono text-white" style="font-size:18px;font-weight:700;margin-bottom:4px;color:var(--amber)">${v}</div><div style="font-size:11px;color:var(--muted)">${s}</div></div>`).join('')}
+    </div>
+    <div style="display:flex;justify-content:flex-end;align-items:center;gap:12px;margin-top:var(--s4)">
+      <span style="font-family:var(--f-mono);font-size:12px;color:var(--muted)">Total Minority APY</span>
+      <span style="font-family:var(--f-mono);font-size:28px;font-weight:700;color:var(--amber)">122.9%</span>
+      <span style="font-family:var(--f-mono);font-size:11px;color:var(--muted)">vs Polymarket 0%</span>
+    </div>
+  `;
+  wrap.appendChild(apyCallout);
+  wrap.appendChild(el('div',{style:{height:'var(--s16)'}}));
+  return wrap;
+}
+
+// --- MARKET CARD --------------------------------------------------------------
+function MarketCard(m) {
+  const isIgn = m.phase === 'ignition';
+  const card = el('div',{'class':`mkt-card${isIgn?' ignition':''}`, onClick:()=>navigate('market',m)});
+
+  // Top row: badges + meta
+  const top = el('div',{'class':'mkt-card-top'});
+  const badges = el('div',{'class':'mkt-badges'});
+  badges.appendChild(Badge(m.category,'sky'));
+  badges.appendChild(isIgn ? Badge('?? Ignition','amber') : Badge('Live','jade'));
+  if(!isIgn) badges.appendChild(el('span',{style:{display:'inline-flex',alignItems:'center',gap:'4px'}},LiveDot()));
+  top.appendChild(badges);
+  top.appendChild(el('span',{'class':'mkt-meta'}, `${m.days}d left`));
+  card.appendChild(top);
+
+  // Question
+  card.appendChild(el('p',{'class':'mkt-q'}, m.question));
+
+  // Prices
+  const prices = el('div',{'class':'mkt-prices'});
+  [['yes','YES',m.yes,'var(--jade)'],['no','NO',m.no,'var(--crimson)']].forEach(([cls,side,price,col]) => {
+    const box = el('div',{'class':`mkt-price ${cls}`});
+    box.appendChild(el('div',{'class':'mkt-price-val'}, `${(price*100).toFixed(0)}¢`));
+    box.appendChild(el('div',{'class':'mkt-price-lbl'}, side));
+    prices.appendChild(box);
+  });
+  card.appendChild(prices);
+
+  // Progress or skew
+  if (isIgn) {
+    const prog = el('div',{'class':'ign-prog'});
+    const progTop = el('div',{'class':'ign-prog-top'});
+    progTop.appendChild(el('span',{'class':'ign-prog-label'}, 'TVL Progress'));
+    progTop.appendChild(el('span',{'class':'ign-prog-val'}, `${fmt.usd(m.tvl)} / ${fmt.usd(m.tvlTarget)}`));
+    const track = el('div',{'class':'prog-track'});
+    const fill = el('div',{'class':'prog-fill'});
+    fill.style.width = `${Math.min((m.tvl/m.tvlTarget)*100,100).toFixed(0)}%`;
+    track.appendChild(fill); prog.appendChild(progTop); prog.appendChild(track);
+    const sub = el('div',{'class':'flex-between mt-4'});
+    sub.appendChild(el('span',{'class':'text-mono text-xs text-muted'}, `${m.participants}/${m.participantsTarget} participants`));
+    sub.appendChild(el('span',{'class':'text-mono text-xs text-amber'}, `${((m.tvl/m.tvlTarget)*100).toFixed(0)}%`));
+    prog.appendChild(sub);
+    card.appendChild(prog);
+  } else {
+    const skew = el('div',{'class':'mkt-skew'});
+    const bar = el('div',{'class':'mkt-skew-bar'});
+    const yesBar = el('div',{'class':'mkt-skew-yes', style:{width:`${m.skew}%`}});
+    bar.appendChild(yesBar);
+    const labels = el('div',{'class':'mkt-skew-labels'});
+    labels.appendChild(el('span',{style:{color:'var(--jade)'}}, `${m.skew}% YES`));
+    labels.appendChild(el('span',{style:{color:'var(--crimson)'}}, `${100-m.skew}% NO`));
+    skew.appendChild(bar); skew.appendChild(labels);
+    card.appendChild(skew);
+  }
+
+  // Footer stats
+  const footer = el('div',{'class':'mkt-footer'});
+  const stats = isIgn
+    ? [[fmt.usd(m.tvl),'TVL'],[fmt.usd(m.vol),'Vol 24h']]
+    : [[fmt.usd(m.tvl),'TVL'],[fmt.usd(m.vol),'Vol 24h'],[`${m.minApy.toFixed(1)}%`,'Min APY']];
+  stats.forEach(([val,lbl],i) => {
+    const s = el('div',{'class':'mkt-stat'});
+    s.appendChild(el('div',{'class':`mkt-stat-val${lbl==='Min APY'?' amber':''}`}, val));
+    s.appendChild(el('div',{'class':'mkt-stat-lbl'}, lbl));
+    footer.appendChild(s);
+  });
+  card.appendChild(footer);
+
+  // Sparkline overlay
+  const spk = sparkline(m.history, 90, 28, isIgn?'#F0A500':'#00E5A0', isIgn?'#F0A500':'#00E5A0');
+  spk.className = 'mkt-spk';
+  Object.assign(spk.style, {position:'absolute',bottom:'10px',right:'10px',pointerEvents:'none'});
+  card.appendChild(spk);
+
+  return card;
+}
+
+// --- MARKETS PAGE -------------------------------------------------------------
+function MarketsPage() {
+  let filter='ALL', sort='tvl';
+  const wrap = el('div',{'class':'container page anim-in'});
+
+  // Header
+  const hdr = el('div',{'class':'page-header'});
+  const hdrRow = el('div',{'class':'flex-between'});
+  const htitle = el('div');
+  htitle.appendChild(el('h1',{'class':'page-title anim-up'}, 'Markets'));
+  htitle.appendChild(el('p',{'class':'page-sub anim-up2'}, `${MARKETS.filter(m=>m.phase==='core').length} live · ${MARKETS.filter(m=>m.phase==='ignition').length} ignition · earn yield on every position`));
+  hdrRow.appendChild(htitle);
+  const launchBtn = el('button',{'class':'btn btn-primary anim-up', onClick:()=>navigate('ignition')}, '+ Launch Market');
+  hdrRow.appendChild(launchBtn);
+  hdr.appendChild(hdrRow);
+  wrap.appendChild(hdr);
+
+  // Filter / Sort row
+  const filterRow = el('div',{'class':'filter-row'});
+  const catGroup = el('div',{'class':'filter-group'});
+  const sortGroup = el('div',{'class':'filter-group flex gap-2', style:{alignItems:'center'}});
+  sortGroup.appendChild(el('span',{'class':'text-mono text-xs text-muted'}, 'Sort:'));
+  const catBtns = {}, sortBtns = {};
+
+  const grid = el('div',{'class':'mkt-grid'});
+
+  function render() {
+    grid.innerHTML = '';
+    MARKETS.filter(m => filter==='ALL'||m.category===filter)
+      .sort((a,b) => sort==='tvl' ? b.tvl-a.tvl : sort==='apy' ? b.minApy-a.minApy : b.vol-a.vol)
+      .forEach(m => grid.appendChild(MarketCard(m)));
+
+    Object.entries(catBtns).forEach(([k,btn]) => btn.className=`btn btn-ghost${k===filter?' active':''}`);
+    Object.entries(sortBtns).forEach(([k,btn]) => btn.className=`btn btn-ghost text-mono text-xs${k===sort?' active':''}`);
+  }
+
+  ['ALL','CRYPTO','POLITICS','MACRO','TECH','SPORTS'].forEach(c => {
+    const btn = el('button',{'class':'btn btn-ghost', onClick:()=>{filter=c;render();}}, c);
+    catBtns[c] = btn; catGroup.appendChild(btn);
+  });
+  ['tvl','apy','volume'].forEach(s => {
+    const btn = el('button',{'class':'btn btn-ghost text-mono text-xs', onClick:()=>{sort=s;render();}}, s.toUpperCase());
+    sortBtns[s] = btn; sortGroup.appendChild(btn);
+  });
+
+  filterRow.appendChild(catGroup); filterRow.appendChild(sortGroup);
+  wrap.appendChild(filterRow); wrap.appendChild(grid);
+  render();
+  return wrap;
+}
+
+// --- MARKET DETAIL ------------------------------------------------------------
+function MarketDetailPage(m) {
+  const wrap = el('div',{'class':'container page anim-in'});
+
+  // Back + header
+  const back = el('button',{'class':'btn btn-ghost mb-5 text-mono text-xs', onClick:()=>navigate('markets')}, '? Back');
+  wrap.appendChild(back);
+
+  const hdrBadges = el('div',{'class':'flex gap-2 mb-4'});
+  hdrBadges.appendChild(Badge(m.category,'sky'));
+  hdrBadges.appendChild(m.phase==='ignition'?Badge('?? Ignition','amber'):Badge('Live','jade'));
+  wrap.appendChild(hdrBadges);
+  wrap.appendChild(el('h1',{'class':'page-title anim-up mb-6', style:{maxWidth:'700px',lineHeight:'1.3'}}, m.question));
+
+  // Layout
+  const layout = el('div',{'class':'detail-layout'});
+  const left = el('div');
+  const right = el('div',{'class':'detail-right'});
+
+  // -- Chart card
+  const chartCard = el('div',{'class':'card chart-card mb-4'});
+  const chartHdr = el('div',{'class':'chart-header'});
+  const priceInfo = el('div');
+  priceInfo.appendChild(el('div',{'class':'chart-price'}, `${(m.yes*100).toFixed(0)}¢`));
+  const changePct = ((m.yes - m.history[0]/100) * 100).toFixed(1);
+  const changeEl = el('div',{'class':'chart-change', style:{color: parseFloat(changePct)>=0?'var(--jade)':'var(--crimson)'}});
+  changeEl.textContent = `${parseFloat(changePct)>=0?'+':''}${changePct}¢ from open`;
+  priceInfo.appendChild(changeEl);
+  const metaInfo = el('div',{'class':'chart-meta'});
+  metaInfo.appendChild(el('div',{'class':'chart-meta-val'}, fmt.usd(m.tvl)));
+  metaInfo.appendChild(el('div',{'class':'chart-meta-lbl'}, 'Total Value Locked'));
+  chartHdr.appendChild(priceInfo); chartHdr.appendChild(metaInfo);
+  chartCard.appendChild(chartHdr);
+
+  // Wide sparkline
+  const bigSpk = sparkline(m.history, 640, 120, '#00E5A0', '#00E5A0');
+  bigSpk.style.width = '100%';
+  bigSpk.removeAttribute('width');
+  bigSpk.setAttribute('viewBox', `0 0 640 120`);
+  bigSpk.setAttribute('preserveAspectRatio', 'none');
+  bigSpk.style.height = '120px';
+  chartCard.appendChild(bigSpk);
+  left.appendChild(chartCard);
+
+  // -- Tabs
+  let activeTab = 'trade';
+  const tabBar = el('div',{'class':'tab-bar mb-4'});
+  const tabContent = el('div',{'class':'anim-in'});
+  const tabBtns = {};
+
+  const tabs = {
+    trade: () => {
+      const d = el('div');
+      d.appendChild(SectionLabel('Order Book Depth'));
+      const booksRow = el('div',{'class':'flex gap-4'});
+      [['YES BIDS','var(--jade)',[[67,'$42K'],[65,'$88K'],[63,'$124K'],[60,'$210K']],'rgba(0,229,160,'],
+       ['NO BIDS','var(--crimson)',[[33,'$35K'],[35,'$67K'],[37,'$92K'],[40,'$180K']],'rgba(255,61,90,']
+      ].forEach(([title,col,rows,bg]) => {
+        const side = el('div',{style:{flex:'1'}});
+        side.appendChild(el('div',{'class':'text-mono text-xs mb-3', style:{color:col,textAlign:'center'}}, title));
+        rows.forEach(([p2,s],i) => {
+          const row = el('div',{'class':'ob-row'});
+          const fill = el('div',{'class':'ob-fill', style:{width:`${20+i*15}%`,background:`${bg}${0.12-i*0.02})`}});
+          row.appendChild(fill);
+          row.appendChild(el('span',{style:{position:'relative',color:col,zIndex:'1'}}, p2+'¢'));
+          row.appendChild(el('span',{style:{position:'relative',color:'var(--dim)',zIndex:'1'}}, s));
+          side.appendChild(row);
+        });
+        booksRow.appendChild(side);
+      });
+      d.appendChild(booksRow);
+      return d;
+    },
+    yield: () => {
+      const d = el('div');
+      const topStats = el('div',{'class':'grid-2 mb-5'});
+      const s1 = el('div',{'class':'card stat-tile amber'});
+      s1.appendChild(el('span',{'class':'st-label'}, 'Minority APY'));
+      s1.appendChild(el('span',{'class':'st-value'}, `${m.minApy.toFixed(1)}%`));
+      s1.appendChild(el('span',{'class':'st-sub'}, 'Current weighted avg'));
+      const s2 = el('div',{'class':'card stat-tile'});
+      s2.appendChild(el('span',{'class':'st-label'}, 'Majority APY'));
+      s2.appendChild(el('span',{'class':'st-value'}, `${m.majApy.toFixed(1)}%`));
+      s2.appendChild(el('span',{'class':'st-sub'}, 'Base stable yield'));
+      topStats.appendChild(s1); topStats.appendChild(s2);
+      d.appendChild(topStats);
+
+      const breakdown = el('div',{'class':'card', style:{padding:'var(--s5)',marginBottom:'var(--s4)'}});
+      breakdown.appendChild(el('div',{'class':'section-label'}, 'Yield Breakdown — Minority Side'));
+      const bars = el('div',{'class':'yield-bar'});
+      const yieldItems = [
+        {l:'RWA Gravity Redistribution',v:'15.5%',pct:15,detail:'Treasury bill yield redistributed to minority',col:'var(--amber)'},
+        {l:'Inverse LP Fee Capture',v:'70.4%',pct:70,detail:'0.7% fee pool, inverse-weighted by position',col:'var(--jade)'},
+        {l:'Gravity Boost Pool',v:'32.8%',pct:33,detail:'Net directional flow incentive pool',col:'var(--sky)'},
+        {l:'VALS Penalty Capture',v:'4.2%',pct:4,detail:'100% of toxic flow penalties (whale-capped at 20%)',col:'var(--crimson)'},
+      ];
+      yieldItems.forEach(({l,v,pct,detail,col}) => {
+        const row = el('div',{'class':'yb-row'});
+        const top2 = el('div',{'class':'yb-top'});
+        top2.appendChild(el('span',{'class':'yb-label'}, l));
+        top2.appendChild(el('span',{'class':'yb-value', style:{color:col}}, v));
+        const det = el('div',{'class':'yb-detail'}, detail);
+        const prog = el('div',{'class':'yb-prog'});
+        const pfill = el('div',{'class':'yb-prog-fill', style:{width:`${pct}%`,background:col,opacity:'.7'}});
+        prog.appendChild(pfill);
+        row.appendChild(top2); row.appendChild(det); row.appendChild(prog);
+        bars.appendChild(row);
+      });
+      const total = el('div',{'class':'flex-between', style:{paddingTop:'var(--s4)',marginTop:'var(--s3)',borderTop:'1px solid var(--border)'}});
+      total.appendChild(el('span',{style:{fontWeight:'600'}},'Total APY (Minority)'));
+      total.appendChild(el('span',{'class':'text-mono', style:{fontSize:'22px',fontWeight:'700',color:'var(--amber)'}}, `${m.minApy.toFixed(1)}%`));
+      bars.appendChild(total);
+      breakdown.appendChild(bars);
+      d.appendChild(breakdown);
+
+      // Gravity evolution
+      const gravCard = el('div',{'class':'card', style:{padding:'var(--s5)'}});
+      gravCard.appendChild(el('div',{'class':'section-label'}, 'Gravity Evolution — Minority Yield Share (80/20 skew)'));
+      const gravData = [22.5,28.3,35.1,42.1,52.8,65.8,80.2,95.0];
+      gravCard.appendChild(sparkline(gravData, 620, 100, 'var(--amber)', 'var(--amber)'));
+      const gravLbls = el('div',{'class':'flex-between mt-4'});
+      ['D+0','D+1','D+2','D+3','D+4','D+5','D+6','D+7'].forEach(l=>gravLbls.appendChild(el('span',{'class':'text-mono text-xs text-muted'},l)));
+      gravCard.appendChild(gravLbls);
+      d.appendChild(gravCard);
+      return d;
+    },
+    oracle: () => {
+      const d = el('div',{'class':'card', style:{padding:'var(--s5)'}});
+      d.appendChild(SectionLabel('Settlement Oracle Stack'));
+      [
+        ['Tier 1','Pyth Network','active','jade','Price feeds — crypto, equities, forex','99.7%'],
+        ['Tier 1','Chainlink','active','jade','Decentralized oracle network','99.9%'],
+        ['Tier 2','C2PA Verifier','standby','amber','Cryptographic media authentication','—'],
+        ['Tier 3','UMA Dispute','standby','amber','Economic dispute resolution (24h challenge)','—'],
+      ].forEach(([tier,name,status,col,role,uptime],i,arr) => {
+        const row = el('div',{'class':'flex gap-4', style:{padding:'12px 0',borderBottom:i<arr.length-1?'1px solid var(--border)':'none',alignItems:'center'}});
+        row.appendChild(Badge(tier, col==='jade'?'jade':'amber'));
+        const info = el('div',{style:{flex:'1'}});
+        info.appendChild(el('div',{style:{fontSize:'13px',fontWeight:'600',color:'var(--white)',marginBottom:'2px'}},name));
+        info.appendChild(el('div',{'class':'text-xs text-muted'},role));
+        row.appendChild(info);
+        const right = el('div',{style:{textAlign:'right',display:'flex',flexDirection:'column',alignItems:'flex-end',gap:'4px'}});
+        right.appendChild(LiveDot(col==='jade'?'jade':'amber'));
+        if (uptime!=='—') right.appendChild(el('span',{'class':'text-mono text-xs', style:{color:'var(--jade)'}},uptime));
+        row.appendChild(right);
+        d.appendChild(row);
+      });
+      const note = el('div',{style:{marginTop:'var(--s4)',padding:'10px 12px',background:'rgba(240,165,0,.05)',border:'1px solid rgba(240,165,0,.15)',borderRadius:'6px'}});
+      note.innerHTML = `<div class="text-mono text-xs text-amber" style="font-weight:700;margin-bottom:2px">TWAP Settlement: 1-hour window</div><div class="text-xs text-muted">3/5 oracle consensus required · Challenge period: 24 hours</div>`;
+      d.appendChild(note);
+      return d;
+    }
+  };
+
+  ['trade','yield','oracle'].forEach(t => {
+    const btn = el('button',{'class':`tab-btn${t==='trade'?' active':''}`, onClick:()=>{
+      activeTab=t;
+      Object.values(tabBtns).forEach(b=>b.classList.remove('active'));
+      tabBtns[t].classList.add('active');
+      tabContent.innerHTML='';
+      tabContent.appendChild(tabs[t]());
+    }}, t);
+    tabBtns[t] = btn;
+    tabBar.appendChild(btn);
+  });
+  tabContent.appendChild(tabs.trade());
+  left.appendChild(tabBar); left.appendChild(tabContent);
+
+  // -- Trade Panel
+  let tradeType = 'YES', amount = '';
+  const panel = el('div',{'class':'trade-panel'});
+  panel.appendChild(el('div',{'class':'trade-title'}, 'Trade'));
+
+  const sideToggle = el('div',{'class':'side-toggle'});
+  const yesBtn = el('button',{'class':'btn-yes active w100', onClick:()=>{tradeType='YES';updateTrade();}}, `YES · ${(m.yes*100).toFixed(0)}¢`);
+  const noBtn  = el('button',{'class':'btn-no w100',    onClick:()=>{tradeType='NO' ;updateTrade();}}, `NO  · ${(m.no*100).toFixed(0)}¢`);
+  sideToggle.appendChild(yesBtn); sideToggle.appendChild(noBtn);
+  panel.appendChild(sideToggle);
+
+  panel.appendChild(el('span',{'class':'inp-label'}, 'Amount (USDC)'));
+  const amtWrap = el('div',{style:{position:'relative',marginBottom:'var(--s2)'}});
+  const amtInp = el('input',{'class':'inp', type:'text', placeholder:'0.00'});
+  amtWrap.appendChild(amtInp);
+  amtWrap.appendChild(el('span',{style:{position:'absolute',right:'12px',top:'50%',transform:'translateY(-50%)',fontFamily:'var(--f-mono)',fontSize:'11px',color:'var(--muted)'}},'USDC'));
+  panel.appendChild(amtWrap);
+
+  const quickRow = el('div',{'class':'quick-amounts mb-4'});
+  ['100','500','1000','5000'].forEach(v => {
+    const btn = el('button',{onClick:()=>{amtInp.value=v;updateTrade();}}, `$${v}`);
+    quickRow.appendChild(btn);
+  });
+  panel.appendChild(quickRow);
+
+  const valsBox = el('div',{'class':'vals-box safe', style:{display:'none'}});
+  panel.appendChild(valsBox);
+
+  const summaryEl = el('div',{'class':'trade-summary'});
+  panel.appendChild(summaryEl);
+
+  const minBadge = el('div',{'class':'minority-badge', style:{display:'none'}}, '? Minority position — earning premium yield via RWA gravity');
+  panel.appendChild(minBadge);
+
+  const buyBtn = el('button',{'class':'buy-btn yes'}, 'Buy YES');
+  panel.appendChild(buyBtn);
+  panel.appendChild(el('div',{'class':'trade-footer'}, 'VALS-protected AMM · Base Network'));
+
+  function updateTrade() {
+    const amt = parseFloat(amtInp.value)||0;
+    const isYes = tradeType === 'YES';
+    const price = isYes ? m.yes : m.no;
+    const isMinority = isYes ? m.yes < 0.5 : m.no < 0.5;
+    const apy = isMinority ? m.minApy : m.majApy;
+    const slippage = Math.min((amt/m.tvl)*100*2, 50);
+
+    yesBtn.className = `btn-yes w100${isYes?' active':''}`;
+    noBtn.className  = `btn-no w100${!isYes?' active':''}`;
+    buyBtn.textContent = `Buy ${tradeType}${amt?` · $${parseInt(amtInp.value).toLocaleString()}`:''}`;
+    buyBtn.className = `buy-btn ${isYes?'yes':'no'}`;
+
+    summaryEl.innerHTML = '';
+    [['Price',`${(price*100).toFixed(0)}¢`,''],
+     ['Shares',amt?`${(amt/price).toFixed(1)}`:'-',''],
+     ['Fee (1.5%)',amt?`$${(amt*.015).toFixed(2)}`:'-',''],
+     ['APY earned',`${apy.toFixed(1)}%`,isMinority?'amber':''],
+    ].forEach(([k,v,cls]) => {
+      const row = el('div',{'class':'ts-row'});
+      row.appendChild(el('span',{'class':'ts-key'},k));
+      row.appendChild(el('span',{'class':`ts-val${cls?' '+cls:''}`},v));
+      summaryEl.appendChild(row);
+    });
+
+    if(amt>0){
+      valsBox.style.display='block';
+      valsBox.className=`vals-box ${slippage>20?'danger':slippage>8?'warn':'safe'}`;
+      valsBox.innerHTML=`<div class="vals-title" style="color:${slippage>20?'var(--crimson)':slippage>8?'var(--amber)':'var(--jade)'}">VALS Slippage: ${slippage.toFixed(1)}%</div><div class="vals-sub">${slippage>20?'High impact — consider splitting order':slippage>8?'Moderate impact':'Within normal range'}</div>`;
+    } else { valsBox.style.display='none'; }
+
+    minBadge.style.display = isMinority ? 'block' : 'none';
+  }
+  amtInp.addEventListener('input', updateTrade);
+  updateTrade();
+
+  right.appendChild(panel);
+  layout.appendChild(left); layout.appendChild(right);
+  wrap.appendChild(layout);
+  return wrap;
+}
+
+// --- IGNITION PAGE ------------------------------------------------------------
+function IgnitionPage() {
+  const wrap = el('div',{'class':'container page anim-in'});
+  let step=1, launched=false;
+  const form = {question:'',category:'CRYPTO',deadline:'',oracle:'pyth',resolution:''};
+
+  // Header
+  const hdr = el('div',{'class':'page-header'});
+  const htop = el('div',{'class':'flex gap-2 mb-4'});
+  htop.appendChild(LiveDot('amber'));
+  htop.appendChild(Badge('Permissionless Market Creation','amber'));
+  hdr.appendChild(htop);
+  hdr.appendChild(el('h1',{'class':'page-title anim-up'}, 'Veritas Ignition'));
+  const sub = el('p',{'class':'page-sub anim-up2', style:{maxWidth:'560px'}});
+  sub.innerHTML = `Launch any prediction market for <strong class="text-amber">$50 USDC</strong>. No whitelisting, no governance vote. Bonding curve bootstraps liquidity automatically.`;
+  hdr.appendChild(sub);
+  wrap.appendChild(hdr);
+
+  const layout = el('div',{'class':'ign-layout'});
+  const formWrap = el('div');
+  const sidebar = el('div',{'class':'ign-sidebar'});
+
+  // -- Active markets sidebar
+  const activeCard = el('div',{'class':'how-section mb-5'});
+  activeCard.appendChild(el('div',{'class':'section-label'}, '?? Active Ignition Markets'));
+  MARKETS.filter(m=>m.phase==='ignition').forEach(m => {
+    const c = el('div',{'class':'active-ign-card', onClick:()=>navigate('market',m)});
+    c.appendChild(el('p',{'class':'aig-q'}, m.question));
+    const pct = ((m.tvl/m.tvlTarget)*100).toFixed(0);
+    const track = el('div',{'class':'prog-track', style:{marginBottom:'4px'}});
+    const fill = el('div',{'class':'prog-fill', style:{width:`${pct}%`}});
+    track.appendChild(fill); c.appendChild(track);
+    const meta = el('div',{'class':'flex-between'});
+    meta.appendChild(el('span',{'class':'text-mono text-xs text-muted'}, `${fmt.usd(m.tvl)} / ${fmt.usd(m.tvlTarget)}`));
+    meta.appendChild(el('span',{'class':'text-mono text-xs text-amber'}, `${pct}%`));
+    c.appendChild(meta);
+    activeCard.appendChild(c);
+  });
+  sidebar.appendChild(activeCard);
+
+  // How it works
+  const howCard = el('div',{'class':'how-section'});
+  howCard.appendChild(el('div',{'class':'section-label'}, 'How Ignition Works'));
+  [['01','Pay $50','Non-refundable creation fee. Bonding curve at k=100M initialises at 50¢/50¢.'],
+   ['02','Bonding Phase','Up to 30 days. Capital locked. 50% of fees escrowed for anti-hump injection.'],
+   ['03','Graduation','$10K TVL + 30 participants ? escrow injected into minority ? migrate to Core.'],
+   ['04','Failure Safety','Miss threshold? 100% of depositor capital refunded. Protocol keeps $50 only.'],
+  ].forEach(([n,t,d],i,arr) => {
+    const row = el('div',{'class':'how-row', style:{borderBottom:i<arr.length-1?'1px solid var(--border)':'none'}});
+    row.appendChild(el('span',{'class':'how-num'},n));
+    const info = el('div');
+    info.appendChild(el('div',{'class':'how-title'},t));
+    info.appendChild(el('div',{'class':'how-desc'},d));
+    row.appendChild(info);
+    howCard.appendChild(row);
+  });
+  sidebar.appendChild(howCard);
+
+  // -- Wizard
+  function renderForm() {
+    formWrap.innerHTML = '';
+
+    if (launched) {
+      const succ = el('div',{'class':'wizard-card success-state'});
+      succ.appendChild(el('div',{'class':'success-icon'}, '??'));
+      succ.appendChild(el('h2',{'class':'success-title'}, 'Market Launched!'));
+      const subTxt = el('p',{'class':'success-sub'});
+      subTxt.innerHTML = 'Your market is live on Veritas Ignition. Bonding curve at 50/50.<br>Capital locked until graduation or refund.';
+      succ.appendChild(subTxt);
+      const box = el('div',{'class':'success-box'});
+      box.appendChild(el('div',{'class':'text-mono text-xs text-amber', style:{fontWeight:'700',marginBottom:'8px'}}, form.question||'Your question'));
+      [['Status','?? Ignition Phase'],['Initial Price','50¢ YES / 50¢ NO'],['TVL Target','$10,000'],['Max Duration','30 days']].forEach(([k,v]) => {
+        const r = el('div',{'class':'ts-row'});
+        r.appendChild(el('span',{'class':'ts-key'},k));
+        r.appendChild(el('span',{'class':'ts-val'},v));
+        box.appendChild(r);
+      });
+      succ.appendChild(box);
+      const btns = el('div',{'class':'flex gap-3', style:{justifyContent:'center'}});
+      const b1 = el('button',{'class':'btn btn-primary', onClick:()=>navigate('markets')}, 'View Markets');
+      const b2 = el('button',{'class':'btn btn-secondary', onClick:()=>{launched=false;step=1;renderForm();}}, 'Launch Another');
+      btns.appendChild(b1); btns.appendChild(b2);
+      succ.appendChild(btns);
+      formWrap.appendChild(succ);
+      return;
+    }
+
+    const card = el('div',{'class':'wizard-card'});
+    const stepsBar = el('div',{'class':'wizard-steps'});
+    [{n:1,l:'Question'},{n:2,l:'Resolution'},{n:3,l:'Review'}].forEach((s,i) => {
+      const item = el('div',{'class':`ws-item${step===s.n?' active':step>s.n?' done':''}`, onClick:()=>{if(step>=s.n){step=s.n;renderForm();}}});
+      item.appendChild(el('div',{'class':'ws-num'}, `Step ${s.n}`));
+      item.appendChild(el('div',{'class':'ws-label'}, step>s.n?`${s.l} ?`:s.l));
+      stepsBar.appendChild(item);
+    });
+    card.appendChild(stepsBar);
+
+    const body = el('div',{'class':'wizard-body'});
+
+    if(step===1) {
+      body.appendChild(el('span',{'class':'inp-label'}, 'Market Question'));
+      const ta = el('textarea',{'class':'inp', rows:'3', placeholder:"e.g. 'Will Ethereum reach $10,000 before July 2026?'"});
+      ta.style.resize='vertical'; ta.value=form.question;
+      ta.addEventListener('input',()=>form.question=ta.value);
+      body.appendChild(ta);
+      body.appendChild(el('div',{'class':'text-xs text-muted mt-4 mb-5'}, 'Must have a clear YES/NO binary resolution condition'));
+
+      body.appendChild(el('span',{'class':'inp-label'}, 'Category'));
+      const catGrid = el('div',{'class':'cat-grid'});
+      ['CRYPTO','POLITICS','MACRO','TECH','SPORTS','OTHER'].forEach(c => {
+        const btn = el('button',{'class':`cat-btn${form.category===c?' active':''}`, onClick:()=>{form.category=c;renderForm();}}, c);
+        catGrid.appendChild(btn);
+      });
+      body.appendChild(catGrid);
+
+      body.appendChild(el('span',{'class':'inp-label'}, 'Resolution Deadline'));
+      const dateInp = el('input',{'class':'inp', type:'date', style:{marginBottom:'0'}});
+      dateInp.style.colorScheme='dark'; dateInp.value=form.deadline;
+      dateInp.addEventListener('change',()=>form.deadline=dateInp.value);
+      body.appendChild(dateInp);
+    }
+
+    if(step===2) {
+      body.appendChild(el('span',{'class':'inp-label'}, 'Oracle Source'));
+      [['pyth','Pyth Network','Real-time price feeds (crypto, equities, forex)','Crypto / Finance'],
+       ['chainlink','Chainlink','Decentralized oracle networks','General Purpose'],
+       ['uma','UMA Oracle','Human-verifiable outcomes with dispute resolution','Events / Politics'],
+       ['c2pa','C2PA Verifier','Cryptographic media authentication','News / Media'],
+      ].forEach(([id,name,desc,best]) => {
+        const opt = el('div',{'class':`oracle-option${form.oracle===id?' active':''}`, onClick:()=>{form.oracle=id;renderForm();}});
+        const inner = el('div',{'class':'oracle-option-inner'});
+        const radio = el('div',{'class':`oracle-radio${form.oracle===id?' active':''}`});
+        if(form.oracle===id) radio.appendChild(el('div',{'class':'oracle-radio-dot'}));
+        const info = el('div',{'class':'oracle-info'});
+        info.appendChild(el('div',{'class':'oracle-name'}, name));
+        info.appendChild(el('div',{'class':'oracle-desc'}, desc));
+        inner.appendChild(radio); inner.appendChild(info);
+        inner.appendChild(Badge(best,'amber'));
+        opt.appendChild(inner);
+        body.appendChild(opt);
+      });
+
+      body.appendChild(el('span',{'class':'inp-label mt-5'}, 'Resolution Criteria'));
+      const ta = el('textarea',{'class':'inp', rows:'3', placeholder:'Explain exactly how this market resolves YES vs NO...'});
+      ta.style.resize='vertical'; ta.value=form.resolution;
+      ta.addEventListener('input',()=>form.resolution=ta.value);
+      body.appendChild(ta);
+    }
+
+    if(step===3) {
+      const preview = el('div',{style:{background:'var(--ink)',borderRadius:'8px',padding:'var(--s5)',marginBottom:'var(--s5)'}});
+      preview.appendChild(el('div',{'class':'text-mono text-xs text-muted mb-4'}, 'Market Preview'));
+      preview.appendChild(Badge(form.category,'sky'));
+      const qText = el('p',{style:{fontSize:'14px',fontWeight:'600',lineHeight:'1.5',margin:'10px 0 var(--s4)'}}, form.question||'[No question entered]');
+      preview.appendChild(qText);
+      [['Deadline',form.deadline||'—'],['Oracle',form.oracle.toUpperCase()],['Starting Price','50¢ YES / 50¢ NO'],['Bonding Curve K','100,000,000 (virtual)']].forEach(([k,v]) => {
+        const r = el('div',{'class':'ts-row'}); r.appendChild(el('span',{'class':'ts-key'},k)); r.appendChild(el('span',{'class':'ts-val'},v)); preview.appendChild(r);
+      });
+      body.appendChild(preview);
+
+      const costBox = el('div',{'class':'cost-box'});
+      costBox.appendChild(el('div',{'class':'text-mono text-xs text-amber', style:{fontWeight:'700',marginBottom:'8px'}}, 'Cost Breakdown'));
+      [['Creation fee','$50.00 USDC'],['Gas estimate','~$0.80'],['Protocol subsidy','$0.00 ?']].forEach(([k,v]) => {
+        const r = el('div',{'class':'cost-row'}); r.appendChild(el('span',{},k)); r.appendChild(el('span',{style:{color:v.includes('0.00')?'var(--jade)':'var(--text)'}},v)); costBox.appendChild(r);
+      });
+      const tot = el('div',{'class':'cost-total'}); tot.appendChild(el('span',{},'Total')); tot.appendChild(el('span',{'class':'text-amber'},'~$50.80 USDC')); costBox.appendChild(tot);
+      body.appendChild(costBox);
+    }
+
+    // Footer buttons
+    const footer = el('div',{'class':'wizard-footer'});
+    if(step>1) {
+      const back = el('button',{'class':'btn btn-secondary', onClick:()=>{step--;renderForm();}}, '? Back');
+      footer.appendChild(back);
+    }
+    if(step<3) {
+      const next = el('button',{'class':'btn btn-primary', onClick:()=>{if(form.question||step>1){step++;renderForm();}}}, 'Continue ?');
+      footer.appendChild(next);
+    } else {
+      const launch = el('button',{'class':'btn btn-primary', style:{flex:'1'}, onClick:()=>{if(form.question){launched=true;renderForm();}}}, '?? Launch Market — $50');
+      footer.appendChild(launch);
+    }
+    body.appendChild(footer);
+    card.appendChild(body);
+    formWrap.appendChild(card);
+  }
+
+  renderForm();
+  layout.appendChild(formWrap); layout.appendChild(sidebar);
+  wrap.appendChild(layout);
+  return wrap;
+}
+
+// --- PORTFOLIO PAGE -----------------------------------------------------------
+function PortfolioPage() {
+  const wrap = el('div',{'class':'container page anim-in'});
+  const P = PORTFOLIO;
+  const ytotal = Object.values(P.yields).reduce((a,b)=>a+b,0);
+
+  wrap.appendChild(el('h1',{'class':'page-title anim-up mb-4'}, 'Portfolio'));
+  const walletRow = el('div',{'class':'flex gap-2 mb-6'});
+  walletRow.appendChild(LiveDot());
+  walletRow.appendChild(el('span',{'class':'text-mono text-xs', style:{color:'var(--jade)'}}, '0x3A9f…B842'));
+  walletRow.appendChild(el('span',{'class':'text-mono text-xs text-muted'}, '· Base Network'));
+  wrap.appendChild(walletRow);
+
+  // Stat tiles
+  const stats = el('div',{'class':'grid-4 mb-6'});
+  [['Portfolio Value',`$${P.value.toLocaleString()}`,''],
+   ['Total P&L',`+$${P.pnl.toLocaleString()}`,'+16.5% return','jade'],
+   ['Yield Earned',`$${ytotal.toLocaleString()}`,'All sources','amber'],
+   ['Avg APY','134.2%','Weighted average','amber'],
+  ].forEach(([l,v,s,col]) => {
+    const tile = el('div',{'class':`card stat-tile${col?' '+col:''}`});
+    tile.appendChild(el('span',{'class':'st-label'},l));
+    tile.appendChild(el('span',{'class':'st-value'},v));
+    if(s) tile.appendChild(el('span',{'class':'st-sub'},s));
+    stats.appendChild(tile);
+  });
+  wrap.appendChild(stats);
+
+  // Main layout
+  const layout = el('div',{'class':'portfolio-layout'});
+  const left = el('div');
+  const right = el('div');
+
+  // Positions table
+  const posCard = el('div',{'class':'card mb-5'});
+  const posHdr = el('div',{'class':'flex-between', style:{padding:'14px var(--s5)',borderBottom:'1px solid var(--border)'}});
+  posHdr.appendChild(el('div',{style:{fontWeight:'600',fontSize:'15px',color:'var(--white)'}},'Active Positions'));
+  posHdr.appendChild(Badge(`${P.positions.length} open`,'jade'));
+  posCard.appendChild(posHdr);
+
+  const tbl = el('table',{'class':'tbl'});
+  const thead = el('thead');
+  const hr = el('tr');
+  ['Market','Side','Cost','Value','P&L','APY'].forEach(h => {
+    const t = el('th', ['Cost','Value','P&L','APY'].includes(h)?{class:'r'}:{});
+    t.textContent = h; hr.appendChild(t);
+  });
+  thead.appendChild(hr); tbl.appendChild(thead);
+  const tbody = el('tbody');
+  P.positions.forEach(pos => {
+    const mkt = MARKETS.find(m=>m.id===pos.mktId);
+    const row = el('tr', {onClick:()=>navigate('market',mkt), style:{cursor:'pointer'}});
+    const mtd = el('td');
+    mtd.appendChild(el('div',{style:{fontSize:'12px',fontWeight:'500',color:'var(--white)',maxWidth:'160px',lineHeight:'1.3'}}, mkt?.question.slice(0,52)+'…'));
+    mtd.appendChild(el('div',{'class':'text-xs text-muted mt-4'}, `${mkt?.category} · ${mkt?.days}d left`));
+    row.appendChild(mtd);
+    row.appendChild(el('td',{}, Badge(pos.side, pos.side==='YES'?'jade':'red')));
+    row.appendChild(el('td',{class:'r text-mono text-sm'}, `$${pos.cost.toLocaleString()}`));
+    row.appendChild(el('td',{class:'r text-mono text-sm'}, `$${pos.value.toLocaleString()}`));
+    row.appendChild(el('td',{class:'r text-mono text-sm pnl-positive'}, `+$${pos.pnl.toLocaleString()}`));
+    row.appendChild(el('td',{class:'r text-mono text-sm text-amber', style:{fontWeight:'700'}}, `${pos.apy.toFixed(1)}%`));
+    tbody.appendChild(row);
+  });
+  tbl.appendChild(tbody); posCard.appendChild(tbl);
+  left.appendChild(posCard);
+
+  // APY History chart
+  const apyCard = el('div',{'class':'card', style:{padding:'var(--s5)'}});
+  apyCard.appendChild(el('div',{'class':'section-label'}, 'Portfolio APY — Last 7 Days'));
+  apyCard.appendChild(el('div',{style:{color:'var(--muted)',fontSize:'12px',marginBottom:'var(--s4)',fontWeight:'300'}},'Blended yield across all active positions'));
+  apyCard.appendChild(barChart(P.apyHistory, 540, 90, '#F0A500'));
+  left.appendChild(apyCard);
+
+  // Yield sources
+  const yieldCard = el('div',{'class':'card', style:{padding:'var(--s5)',marginBottom:'var(--s4)'}});
+  yieldCard.appendChild(el('div',{'class':'section-label'}, 'Yield Sources'));
+  [['Inverse LP Fees',P.yields.fees,'var(--jade)'],
+   ['Gravity Boost',P.yields.gravity,'var(--sky)'],
+   ['RWA Gravity',P.yields.rwa,'var(--amber)'],
+   ['VALS Capture',P.yields.vals,'var(--crimson)'],
+  ].forEach(([l,v,col]) => {
+    const pct = (v/ytotal*100);
+    const row = el('div',{style:{marginBottom:'12px'}});
+    const top2 = el('div',{'class':'flex-between mb-3'});
+    top2.appendChild(el('span',{style:{fontSize:'12px',fontWeight:'600'}},l));
+    top2.appendChild(el('span',{'class':'text-mono text-sm',style:{color:col}},`$${v.toLocaleString()}`));
+    const track = el('div',{'class':'prog-track'});
+    const fill = el('div',{style:{height:'4px',width:`${pct}%`,background:col,borderRadius:'2px'}});
+    track.appendChild(fill);
+    row.appendChild(top2); row.appendChild(track);
+    row.appendChild(el('div',{'class':'text-xs text-muted mt-4'},`${pct.toFixed(0)}% of total yield`));
+    yieldCard.appendChild(row);
+  });
+  const yTot = el('div',{'class':'flex-between', style:{paddingTop:'var(--s4)',borderTop:'1px solid var(--border)'}});
+  yTot.appendChild(el('span',{style:{fontWeight:'700',fontSize:'13px'}},'Total Yield Earned'));
+  yTot.appendChild(el('span',{'class':'text-mono text-amber',style:{fontSize:'18px',fontWeight:'700'}},`$${ytotal.toLocaleString()}`));
+  yieldCard.appendChild(yTot);
+  right.appendChild(yieldCard);
+
+  // Commitment status
+  const commitCard = el('div',{'class':'card', style:{padding:'var(--s5)'}});
+  commitCard.appendChild(el('div',{'class':'section-label'}, 'Commitment Status'));
+  const note = el('div',{style:{background:'rgba(0,229,160,.05)',border:'1px solid rgba(0,229,160,.15)',borderRadius:'6px',padding:'10px 12px',marginBottom:'var(--s4)'}});
+  note.innerHTML=`<div class="text-mono text-xs" style="color:var(--jade);font-weight:700;margin-bottom:3px">All positions committed ?</div><div class="text-xs text-muted">Holding to settlement earns 3.5–4× vs early exit</div>`;
+  commitCard.appendChild(note);
+  [['Completion bonus at risk','$2,840'],['Linear vested so far','$4,000'],['Early exit penalty','50% yield forfeit']].forEach(([k,v]) => {
+    const r = el('div',{'class':'ts-row'}); r.appendChild(el('span',{'class':'ts-key'},k)); r.appendChild(el('span',{'class':'ts-val'},v)); commitCard.appendChild(r);
+  });
+  right.appendChild(commitCard);
+
+  layout.appendChild(left); layout.appendChild(right);
+  wrap.appendChild(layout);
+  return wrap;
+}
+
+// --- DOCS PAGE ----------------------------------------------------------------
+function DocsPage() {
+  const wrap = el('div',{'class':'container page anim-in'});
+  const inner = el('div',{'class':'docs-layout'});
+
+  const hdr = el('div',{style:{marginBottom:'var(--s10)'}});
+  hdr.appendChild(Badge('Technical Litepaper · Feb 2026','amber'));
+  const h = el('h1',{'class':'page-title anim-up', style:{marginTop:'var(--s4)',marginBottom:'6px',fontSize:'48px'}});
+  h.innerHTML = `VERITAS`;
+  hdr.appendChild(h);
+  hdr.appendChild(el('p',{style:{color:'var(--body)',fontSize:'16px',fontFamily:'var(--f-display)',fontStyle:'italic',fontWeight:'300'}},'Yield-Bearing Prediction Markets — Production Architecture'));
+  inner.appendChild(hdr);
+
+  const sections = [
+    ['Executive Summary','Veritas solves two fundamental problems in prediction markets: idle capital earning 0% return, and prohibitive barriers to market creation. Core innovations include Veritas Ignition ($50 permissionless creation), RWA Gravity (Treasury yield redistribution majority?minority), Bounded VALS (50% slippage cap), Inverse-Weighted LP Fees, and Wash-Trading Immunity.'],
+    ['RWA Gravity Redistribution','Total RWA yield = TVL × 5% × (T_elapsed / 365). Gravity_factor = (T_total / T_remaining)^1.5 × (W_maj / W_min)^0.3. The tanh() function caps minority share at 95%. Majority always receives minimum 5%. At 80/20 skew with 7 days to settlement, minority share reaches 95% — a 4.75× boost vs proportional allocation.'],
+    ['VALS — Bounded Slippage','P(execution) = P(cp) × min(e^[? × (?x/L) × tanh(s)], 1.5 × P(cp)). Hard cap: 50% maximum slippage. Adaptive circuit breakers distinguish genuine news events (2–5s pause) from toxic arbitrage (full penalty applied). Priority fee bypass: 0.5–2% premium reduces VALS proportionally.'],
+    ['Veritas Ignition Mechanics','$50 USDC creation fee. Bonding curve k=100,000,000. Starting: 10,000 virtual YES + NO shares at $0.50. Graduation: $10K TVL + 30 unique addresses + <30 days. Fee split: 50% escrowed ? minority injection at graduation, 33% protocol, 17% safety module. Post-graduation: 14-day linear vesting. Failed market: 100% participant refund.'],
+    ['Settlement & Oracle Stack','TWAP window: 1 hour. Primary: Pyth + Chainlink (3/5 consensus). Tier 2: C2PA media authentication. Tier 3: UMA optimistic oracle (24h challenge period, 1% TVL stake required). Economic security: attacking a $10M market costs >$1M. UMA voters are economically incentivised to rule correctly.'],
+    ['Security Architecture','3/5 multisig for critical functions. 48h timelock for parameter changes, 7 days for upgrades. Emergency pause: 2/5 signatures (immediate). Safety module: 10% of protocol earnings reserved. Coverage: oracle failure up to 20% TVL, smart contract exploit up to 100% of affected funds.'],
+  ];
+
+  sections.forEach(([title,content],i) => {
+    const sec = el('div',{'class':'doc-section'});
+    const ey = el('div',{'class':'doc-eyebrow'});
+    ey.appendChild(el('span',{'class':'doc-num'}, `0${i+1}`));
+    ey.appendChild(el('h2',{'class':'doc-h'}, title));
+    sec.appendChild(ey);
+    sec.appendChild(el('p',{'class':'doc-p'}, content));
+    inner.appendChild(sec);
+  });
+
+  // Comparison table
+  const tblSec = el('div',{'class':'doc-section'});
+  tblSec.appendChild(el('div',{'class':'doc-eyebrow'},el('span',{'class':'doc-num'},'07'),el('h2',{'class':'doc-h'},'Competitive Comparison')));
+  const tbl = el('table',{'class':'compare-table card', style:{borderRadius:'8px',overflow:'hidden'}});
+  const thead = el('thead');
+  const hr = el('tr');
+  ['Feature','Polymarket','Kalshi','VERITAS'].forEach((h,i) => {
+    const t = el('th'); t.textContent=h;
+    if(i===3) t.style.color='var(--amber)';
+    hr.appendChild(t);
+  });
+  thead.appendChild(hr); tbl.appendChild(thead);
+  const tbody = el('tbody');
+  [['Minority LP yield','?','?','?'],['Wash-trade guard','None','None','Net flow only'],['VALS slippage cap','None','None','50% max'],['Yield-bearing orders','?','?','? First'],['Permissionless create','?','?','$50 Ignition'],['LP APY','0%','0%','100%+ minority']].forEach(([f,...vals]) => {
+    const row = el('tr');
+    row.appendChild(el('td',{},f));
+    vals.forEach((v,i) => {
+      const td2 = el('td',{class:i===2?'veritas':v==='?'||(!v.includes('?')&&!v.includes('None')&&!v.includes('0%'))?'yes':''});
+      td2.textContent=v; row.appendChild(td2);
+    });
+    tbody.appendChild(row);
+  });
+  tbl.appendChild(tbody);
+  tblSec.appendChild(tbl);
+  inner.appendChild(tblSec);
+
+  wrap.appendChild(inner);
+  wrap.appendChild(el('div',{style:{height:'var(--s16)'}}));
+  return wrap;
+}
+
+// --- ROUTER -------------------------------------------------------------------
+const app = document.getElementById('app');
+app.appendChild(Navbar());
+
+const content = el('div',{id:'content'});
+app.appendChild(content);
+
+function render() {
+  content.innerHTML = '';
+  const {page, market} = state;
+  if(page !== 'landing') content.appendChild(Ticker());
+
+  const pages = {
+    landing:   Landing,
+    markets:   MarketsPage,
+    market:    () => market ? MarketDetailPage(market) : MarketsPage(),
+    ignition:  IgnitionPage,
+    portfolio: PortfolioPage,
+    docs:      DocsPage,
+  };
+  content.appendChild((pages[page]||Landing)());
+}
+
+onState(render);
+render();
+</script>
+</body>
+</html>
+

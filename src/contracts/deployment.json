@@ -1,0 +1,26 @@
+{
+  "network": "arbitrumSepolia",
+  "chainId": 421614,
+  "deployer": "0xE31e4d58f58b5E8c485a18A312c902B234a3a514",
+  "deployedAt": "2026-02-26T21:08:36.022Z",
+  "contracts": {
+    "MockUSDC": "0x89D6cfE08183135259e9c15eb65562a63C901274",
+    "MockOracle": "0x39EfBE14f04f5F45a16Bb1CC62a939CB60F22361",
+    "VeritasFactory": "0x917496a732b89f213f98e0297e1e107f9058B167",
+    "VeritasIgnition": "0x7c437E91bE82cA038Dc6eB4C8f3B1Da683d80D03"
+  },
+  "seedMarkets": [
+    {
+      "question": "Will the Fed cut rates in Q3 2025?",
+      "address": "0x4C741B219e3A92c4Fa03e4772725721321210235"
+    },
+    {
+      "question": "Will ETH exceed $5,000 before Jan 1, 2026?",
+      "address": "0xCFe8ffFb09d08A824C45a991D85dDF9905F91361"
+    },
+    {
+      "question": "Will the US CPI print below 3% in May 2025?",
+      "address": "0x03a0df048fC8fD9Fc1a9F7e478a1D5bE1fEA980C"
+    }
+  ]
+}
