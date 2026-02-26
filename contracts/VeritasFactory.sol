@@ -21,6 +21,9 @@ contract VeritasFactory is Ownable {
     address[] public markets;
     mapping(address => bool) public isMarket;
 
+    // Contracts authorized to call createMarketWithCustomSeed (e.g. Dutch Auction)
+    mapping(address => bool) public authorizedCreators;
+
     // Initial seed liquidity per side when factory creates a market
     uint256 public seedLiquidityPerSide = 100 * 1e6; // 100 USDC each side = 200 total
 
@@ -34,6 +37,7 @@ contract VeritasFactory is Ownable {
 
     event SeedLiquidityUpdated(uint256 newAmount);
     event ProtocolUpdated(address newProtocol);
+    event AuthorizedCreatorSet(address indexed creator, bool authorized);
 
     constructor(address _usdc, address _oracle, address _protocol) Ownable(msg.sender) {
         usdc     = IERC20(_usdc);
@@ -87,6 +91,60 @@ contract VeritasFactory is Ownable {
         require(_protocol != address(0), "Zero address");
         protocol = _protocol;
         emit ProtocolUpdated(_protocol);
+    }
+
+    function setAuthorizedCreator(address creator, bool authorized) external onlyOwner {
+        require(creator != address(0), "Zero address");
+        authorizedCreators[creator] = authorized;
+        emit AuthorizedCreatorSet(creator, authorized);
+    }
+
+    /// @notice Create a market with custom (asymmetric) seed amounts.
+    ///         Called by the Dutch Auction contract after clearing.
+    ///         LP shares are initially held by the caller (auction contract),
+    ///         then distributed to bidders via transferLPSharesFromAuction.
+    /// @param question      Market question
+    /// @param duration      Seconds until expiry
+    /// @param seedYes       USDC seeded into the YES reserve
+    /// @param seedNo        USDC seeded into the NO reserve
+    function createMarketWithCustomSeed(
+        string calldata question,
+        uint256 duration,
+        uint256 seedYes,
+        uint256 seedNo
+    ) external returns (address market) {
+        require(authorizedCreators[msg.sender] || msg.sender == owner(), "Not authorized");
+        require(bytes(question).length > 0, "Empty question");
+        require(duration >= 1 hours && duration <= 365 days, "Invalid duration");
+        require(seedYes > 0 && seedNo > 0, "Zero seed");
+
+        market = address(new VeritasMarket(
+            address(usdc),
+            oracle,
+            address(this),
+            protocol,
+            question,
+            duration
+        ));
+
+        // Pull total USDC from caller (auction contract) into factory
+        uint256 seedTotal = seedYes + seedNo;
+        usdc.safeTransferFrom(msg.sender, address(this), seedTotal);
+        usdc.approve(market, seedTotal);
+
+        // Seed market; factory is `from`, so LP shares temporarily sit in factory
+        VeritasMarket(market).seedLiquidity(address(this), seedYes, seedNo);
+
+        // Move LP shares from factory → auction contract
+        VeritasMarket(market).transferInitialLPShares(msg.sender, seedYes, seedNo);
+
+        // Register auction as authorized to distribute LP shares to bidders
+        VeritasMarket(market).setDutchAuction(msg.sender);
+
+        markets.push(market);
+        isMarket[market] = true;
+
+        emit MarketCreated(market, question, duration, msg.sender, markets.length - 1);
     }
 
     // ─────────────────────────────────────────────

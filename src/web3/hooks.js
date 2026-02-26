@@ -3,7 +3,7 @@
  * Custom React hooks for reading/writing Veritas contracts via wagmi.
  */
 
-import { useReadContract, useReadContracts, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
+import { useReadContract, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { parseUnits, formatUnits } from "viem";
 import { ADDRESSES, ABIS } from "./contracts.js";
 
@@ -274,6 +274,90 @@ export function useCommit() {
   };
 
   return { commit, hash, isPending, isConfirming, isSuccess, error };
+}
+
+// ─── Admin (owner-only) ───────────────────────────────────────────────────
+
+/** Read the factory owner address */
+export function useFactoryOwner() {
+  return useReadContract({
+    address: ADDRESSES.factory,
+    abi: ABIS.factory,
+    functionName: "owner",
+    query: { enabled: !!ADDRESSES.factory },
+  });
+}
+
+/** Check if the Dutch Auction contract is registered as an authorized creator */
+export function useIsAuctionAuthorized() {
+  return useReadContract({
+    address: ADDRESSES.factory,
+    abi: ABIS.factory,
+    functionName: "authorizedCreators",
+    args: [ADDRESSES.dutchAuction],
+    query: { enabled: !!ADDRESSES.factory && !!ADDRESSES.dutchAuction },
+  });
+}
+
+/** Register (or deregister) the Dutch Auction contract as an authorized creator */
+export function useSetAuthorizedCreator() {
+  const { writeContract, data: hash, isPending, error } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+
+  const setAuthorized = (creatorAddress, authorized) => {
+    writeContract({
+      address: ADDRESSES.factory,
+      abi: ABIS.factory,
+      functionName: "setAuthorizedCreator",
+      args: [creatorAddress, authorized],
+    });
+  };
+
+  return { setAuthorized, hash, isPending, isConfirming, isSuccess, error };
+}
+
+/** Create a regular (instant) market directly via factory. Caller must pre-approve USDC. */
+export function useAdminCreateMarket() {
+  const { writeContract, data: hash, isPending, error } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+
+  const createMarket = (question, durationSeconds) => {
+    writeContract({
+      address: ADDRESSES.factory,
+      abi: ABIS.factory,
+      functionName: "createMarket",
+      args: [question, BigInt(durationSeconds)],
+    });
+  };
+
+  return { createMarket, hash, isPending, isConfirming, isSuccess, error };
+}
+
+/** Get factory seed liquidity per side (USDC, 6 decimals) */
+export function useSeedLiquidityPerSide() {
+  return useReadContract({
+    address: ADDRESSES.factory,
+    abi: ABIS.factory,
+    functionName: "seedLiquidityPerSide",
+    query: { enabled: !!ADDRESSES.factory },
+  });
+}
+
+/** Launch a Dutch Auction for a new curated market */
+export function useCreateAuction() {
+  const { writeContract, data: hash, isPending, error } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+
+  const createAuction = (question, commitDuration, revealDuration, marketDuration) => {
+    writeContract({
+      address: ADDRESSES.dutchAuction,
+      abi: ABIS.dutchAuction,
+      functionName: "createAuction",
+      args: [question, BigInt(commitDuration), BigInt(revealDuration), BigInt(marketDuration)],
+    });
+  };
+
+  return { createAuction, hash, isPending, isConfirming, isSuccess, error };
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────

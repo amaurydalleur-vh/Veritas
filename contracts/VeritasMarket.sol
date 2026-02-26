@@ -81,6 +81,9 @@ contract VeritasMarket is ReentrancyGuard {
     uint256 public participantCount;
     mapping(address => bool) public hasParticipated;
 
+    // Dutch Auction: authorized to distribute LP shares to bidders post-seeding
+    address public dutchAuction;
+
     // ─────────────────────────────────────────────
     // Events
     // ─────────────────────────────────────────────
@@ -422,6 +425,47 @@ contract VeritasMarket is ReentrancyGuard {
         protocolFees = 0;
         usdc.safeTransfer(protocol, amount);
         emit ProtocolFeesWithdrawn(amount);
+    }
+
+    // ─────────────────────────────────────────────
+    // Dutch Auction LP share distribution
+    // ─────────────────────────────────────────────
+
+    /// @notice Called once by factory: transfers LP shares from factory to auction contract.
+    ///         After createMarketWithCustomSeed seeds via factory, shares temporarily sit
+    ///         in factory's account. This moves them to the auction before distribution.
+    function transferInitialLPShares(address to, uint256 amtYes, uint256 amtNo)
+        external onlyFactory
+    {
+        require(sharesYes[factory] >= amtYes, "Insufficient YES shares");
+        require(sharesNo[factory]  >= amtNo,  "Insufficient NO shares");
+        sharesYes[factory] -= amtYes;
+        sharesNo[factory]  -= amtNo;
+        sharesYes[to] += amtYes;
+        sharesNo[to]  += amtNo;
+    }
+
+    /// @notice Called once by factory after seeding to register the Dutch Auction contract.
+    function setDutchAuction(address _auction) external onlyFactory {
+        require(dutchAuction == address(0), "Already set");
+        require(_auction != address(0), "Zero address");
+        dutchAuction = _auction;
+    }
+
+    /// @notice Transfer LP shares from the auction contract to a bidder.
+    ///         Called per bidder during claimLPShares on the auction.
+    function transferLPSharesFromAuction(
+        address to,
+        uint256 amtSharesYes,
+        uint256 amtSharesNo
+    ) external {
+        require(msg.sender == dutchAuction, "Not dutch auction");
+        require(sharesYes[dutchAuction] >= amtSharesYes, "Insufficient YES shares");
+        require(sharesNo[dutchAuction]  >= amtSharesNo,  "Insufficient NO shares");
+        sharesYes[dutchAuction] -= amtSharesYes;
+        sharesNo[dutchAuction]  -= amtSharesNo;
+        sharesYes[to] += amtSharesYes;
+        sharesNo[to]  += amtSharesNo;
     }
 
     // ─────────────────────────────────────────────

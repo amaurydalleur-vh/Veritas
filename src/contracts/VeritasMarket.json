@@ -342,6 +342,19 @@
     },
     {
       "inputs": [],
+      "name": "dutchAuction",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
       "name": "expiresAt",
       "outputs": [
         {
@@ -673,6 +686,19 @@
     {
       "inputs": [
         {
+          "internalType": "address",
+          "name": "_auction",
+          "type": "address"
+        }
+      ],
+      "name": "setDutchAuction",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
           "internalType": "bool",
           "name": "_outcomeYes",
           "type": "bool"
@@ -792,6 +818,52 @@
         }
       ],
       "name": "trade",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "to",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "amtYes",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "amtNo",
+          "type": "uint256"
+        }
+      ],
+      "name": "transferInitialLPShares",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "to",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "amtSharesYes",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "amtSharesNo",
+          "type": "uint256"
+        }
+      ],
+      "name": "transferLPSharesFromAuction",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"

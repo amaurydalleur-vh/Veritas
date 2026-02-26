@@ -54,7 +54,20 @@ async function main() {
   const ignitionAddress = await ignition.getAddress();
   console.log("VeritasIgnition deployed:", ignitionAddress);
 
-  // ── 5. Seed 3 example markets ─────────────────────────────────
+  // ── 5. VeritasDutchAuction ────────────────────────────────────
+  console.log("Deploying VeritasDutchAuction...");
+  const VeritasDutchAuction = await hre.ethers.getContractFactory("VeritasDutchAuction");
+  const dutchAuction = await VeritasDutchAuction.deploy(usdcAddress, factoryAddress);
+  await dutchAuction.waitForDeployment();
+  const dutchAuctionAddress = await dutchAuction.getAddress();
+  console.log("VeritasDutchAuction deployed:", dutchAuctionAddress);
+
+  // Register Dutch Auction as authorized creator in the factory
+  console.log("Registering Dutch Auction as authorized creator...");
+  await (await factory.setAuthorizedCreator(dutchAuctionAddress, true)).wait();
+  console.log("Dutch Auction registered.");
+
+  // ── 6. Seed 3 example markets ─────────────────────────────────
   console.log("\nSeeding example markets...");
 
   // Approve factory to pull seed liquidity (200 USDC * 3 markets = 600 USDC)
@@ -87,10 +100,11 @@ async function main() {
     deployer:    deployer.address,
     deployedAt:  new Date().toISOString(),
     contracts: {
-      MockUSDC:        usdcAddress,
-      MockOracle:      oracleAddress,
-      VeritasFactory:  factoryAddress,
-      VeritasIgnition: ignitionAddress,
+      MockUSDC:             usdcAddress,
+      MockOracle:           oracleAddress,
+      VeritasFactory:       factoryAddress,
+      VeritasIgnition:      ignitionAddress,
+      VeritasDutchAuction:  dutchAuctionAddress,
     },
     seedMarkets: deployedMarkets,
   };
@@ -105,11 +119,12 @@ async function main() {
   );
 
   // Also write ABI files for the frontend
-  await writeABI(hre, "MockUSDC",        outDir);
-  await writeABI(hre, "MockOracle",      outDir);
-  await writeABI(hre, "VeritasMarket",   outDir);
-  await writeABI(hre, "VeritasFactory",  outDir);
-  await writeABI(hre, "VeritasIgnition", outDir);
+  await writeABI(hre, "MockUSDC",             outDir);
+  await writeABI(hre, "MockOracle",           outDir);
+  await writeABI(hre, "VeritasMarket",        outDir);
+  await writeABI(hre, "VeritasFactory",       outDir);
+  await writeABI(hre, "VeritasIgnition",      outDir);
+  await writeABI(hre, "VeritasDutchAuction",  outDir);
 
   console.log("\n=== DEPLOYMENT COMPLETE ===");
   console.log("Artifacts written to src/contracts/");
@@ -118,6 +133,7 @@ async function main() {
   console.log(`VITE_IGNITION_ADDRESS=${ignitionAddress}`);
   console.log(`VITE_USDC_ADDRESS=${usdcAddress}`);
   console.log(`VITE_ORACLE_ADDRESS=${oracleAddress}`);
+  console.log(`VITE_DUTCH_AUCTION_ADDRESS=${dutchAuctionAddress}`);
   console.log(`VITE_CHAIN_ID=421614`);
   console.log("\nFaucet test USDC: call usdc.faucet() from your wallet address.");
 }

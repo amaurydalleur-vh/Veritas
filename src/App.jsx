@@ -8,9 +8,13 @@ import MarketDetailPage from "./pages/MarketDetailPage";
 import IgnitionPage from "./pages/IgnitionPage";
 import PortfolioPage from "./pages/PortfolioPage";
 import DocsPage from "./pages/DocsPage";
+import AdminPage from "./pages/AdminPage";
 
 function App() {
-  const [page, setPage] = useState("landing");
+  const [page, setPage] = useState(() => {
+    const path = window.location.pathname.replace("/", "");
+    return path === "admin" ? "admin" : "landing";
+  });
   const [selectedMarket, setSelectedMarket] = useState(null);
 
   const content = useMemo(() => {
@@ -52,6 +56,7 @@ function App() {
     if (page === "ignition") return <IgnitionPage />;
     if (page === "portfolio") return <PortfolioPage />;
     if (page === "docs") return <DocsPage />;
+    if (page === "admin") return <AdminPage />;
     return (
       <LandingPage
         onNavigate={setPage}
