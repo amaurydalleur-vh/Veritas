@@ -133,6 +133,23 @@ export function useAddLiquidity() {
   return { addLiquidity, hash, isPending, isConfirming, isSuccess, error };
 }
 
+/** Hook to remove liquidity from a market by bps fraction (1..10000) */
+export function useRemoveLiquidity() {
+  const { writeContract, data: hash, isPending, error } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+
+  const removeLiquidity = (marketAddress, fractionBps) => {
+    writeContract({
+      address: marketAddress,
+      abi: ABIS.market,
+      functionName: "removeLiquidity",
+      args: [BigInt(fractionBps)],
+    });
+  };
+
+  return { removeLiquidity, hash, isPending, isConfirming, isSuccess, error };
+}
+
 /** Hook to redeem winnings after settlement */
 export function useRedeem() {
   const { writeContract, data: hash, isPending, error } = useWriteContract();
