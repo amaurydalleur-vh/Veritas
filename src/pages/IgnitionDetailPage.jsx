@@ -15,6 +15,8 @@ import { ABIS, ADDRESSES } from "../web3/contracts";
 
 const STATUS = ["Pending", "Active", "Graduated", "Expired", "Rejected"];
 const VESTING_CLIFF_SECONDS = 14 * 24 * 60 * 60;
+const GRADUATION_TVL_USDC = 10_000;
+const GRADUATION_USERS = 30;
 
 function toNum(v, div = 1) {
   return Number(v ?? 0n) / div;
@@ -31,6 +33,7 @@ function IgnitionDetailPage({ launchId, onBack, onOpenLiveMarket }) {
   const { data: virtualProb, refetch: refetchVirtualProb } = useVirtualProbability(launchId);
   const [side, setSide] = useState("YES");
   const [amount, setAmount] = useState("100");
+  const [checkAttempted, setCheckAttempted] = useState(false);
 
   const question = launch?.question ?? launch?.[0] ?? "Ignition launch";
   const createdAt = Number(launch?.createdAt ?? launch?.[2] ?? 0n);
@@ -90,6 +93,11 @@ function IgnitionDetailPage({ launchId, onBack, onOpenLiveMarket }) {
   const isGraduated = status === 2;
   const isRefundable = status === 3 || status === 4;
   const hasLiveMarket = !!marketAddress && marketAddress !== "0x0000000000000000000000000000000000000000";
+  const tvlNum = Number(tvl) / 1e6;
+  const participantsNum = Number(participants);
+  const tvlToGo = Math.max(0, GRADUATION_TVL_USDC - tvlNum);
+  const participantsToGo = Math.max(0, GRADUATION_USERS - participantsNum);
+  const meetsGraduation = tvlNum >= GRADUATION_TVL_USDC && participantsNum >= GRADUATION_USERS && remainingSec > 0;
   const vestingElapsed = isGraduated ? Math.max(0, now - graduatedAt) : 0;
   const vestingBps = isGraduated ? Math.min(10_000, Math.floor((vestingElapsed * 10_000) / VESTING_CLIFF_SECONDS)) : 0;
   const totalEntitledYes = tvl > 0n ? ((committedByUser ?? 0n) * seedYes) / tvl : 0n;
@@ -210,10 +218,31 @@ function IgnitionDetailPage({ launchId, onBack, onOpenLiveMarket }) {
                 className="btn btn-ghost w100"
                 style={{ marginTop: 8 }}
                 disabled={checkPending || checkConfirming}
-                onClick={() => checkGraduation(launchId)}
+                onClick={() => {
+                  setCheckAttempted(true);
+                  checkGraduation(launchId);
+                }}
               >
                 {checkPending || checkConfirming ? "Checking..." : "Check Graduation"}
               </button>
+              {checkAttempted && checkOk && status === 1 && (
+                <div className="ob-notice" style={{ marginTop: 8 }}>
+                  Graduation check completed: criteria are not met yet.
+                  <br />
+                  Remaining threshold: ${tvlToGo.toFixed(2)} TVL and {participantsToGo} participant(s).
+                </div>
+              )}
+              {checkAttempted && checkOk && status === 2 && (
+                <div className="ob-notice" style={{ color: "var(--jade)", marginTop: 8 }}>
+                  Graduation triggered successfully. This launch is now live.
+                </div>
+              )}
+              {!meetsGraduation && status === 1 && (
+                <div className="ob-notice" style={{ marginTop: 8 }}>
+                  Graduation requires ${GRADUATION_TVL_USDC.toLocaleString()} TVL and {GRADUATION_USERS} participants.
+                  Current: ${tvlNum.toFixed(2)} and {participantsNum}.
+                </div>
+              )}
             </div>
           )}
 

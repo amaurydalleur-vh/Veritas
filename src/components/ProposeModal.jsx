@@ -53,26 +53,26 @@ function ProposeModal({ onClose }) {
             <button className='btn btn-primary' onClick={onClose} type='button'>Close</button>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className='trade-form'>
-            <label className='trade-label'>
+          <form onSubmit={handleSubmit} className='propose-form'>
+            <label className='propose-label'>
               Market Question
               <textarea
                 placeholder='e.g. Will ETH exceed $5,000 before July 1, 2026?'
                 value={question}
                 onChange={e => setQuestion(e.target.value)}
-                className='trade-input'
+                className='propose-input'
                 rows={3}
                 maxLength={500}
               />
             </label>
-            {step === 'approving' && approvePending && <p className='status-msg'>Approving 50 USDC...</p>}
-            {step === 'proposing' && proposePending && <p className='status-msg'>Submitting proposal...</p>}
-            {error && <p className='error-msg'>{error.shortMessage || error.message}</p>}
+            {step === 'approving' && approvePending && <p className='propose-status'>Approving 50 USDC...</p>}
+            {step === 'proposing' && proposePending && <p className='propose-status'>Submitting proposal...</p>}
+            {error && <p className='propose-error'>{error.shortMessage || error.message}</p>}
 
             {step === 'proposing' && !proposePending ? (
-              <button className='btn btn-primary' type='button' onClick={handlePropose}>Confirm Proposal</button>
+              <button className='btn btn-primary w100' type='button' onClick={handlePropose}>Confirm Proposal</button>
             ) : (
-              <button className='btn btn-primary' type='submit' disabled={approvePending || proposePending || !question.trim()}>
+              <button className='btn btn-primary w100' type='submit' disabled={approvePending || proposePending || !question.trim()}>
                 {needsApproval ? 'Approve 50 USDC' : 'Propose Market'}
               </button>
             )}

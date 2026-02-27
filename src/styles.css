@@ -505,6 +505,44 @@ body {
   line-height: 1.5;
 }
 
+.vals-popup {
+  position: fixed;
+  top: 84px;
+  right: 24px;
+  width: min(420px, calc(100vw - 32px));
+  background: #fff6f5;
+  border: 1px solid #f4c5c2;
+  border-left: 4px solid #c4574e;
+  border-radius: 10px;
+  box-shadow: 0 14px 34px rgba(0, 19, 48, 0.2);
+  padding: 10px 12px;
+  z-index: 1300;
+}
+
+.vals-popup strong {
+  color: #8f2f28;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.vals-popup p {
+  margin: 6px 0 10px;
+  color: #8f2f28;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.vals-popup button {
+  border: 1px solid #d9a3a0;
+  background: #fff;
+  color: #8f2f28;
+  border-radius: 7px;
+  padding: 4px 8px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
 /* Trade sidebar: Market / Limit sub-tabs */
 .trade-subtabs {
   display: flex;
@@ -731,6 +769,49 @@ body {
 .modal-success p {
   margin: 0 0 12px;
   color: var(--soft);
+}
+
+.propose-form {
+  display: grid;
+  gap: 10px;
+}
+
+.propose-label {
+  display: block;
+  color: var(--soft);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.propose-input {
+  width: 100%;
+  margin-top: 6px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 15px;
+  font-family: "IBM Plex Sans", sans-serif;
+  color: var(--text);
+  background: var(--surface-2);
+  resize: vertical;
+  min-height: 96px;
+}
+
+.propose-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.propose-status {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.propose-error {
+  margin: 0;
+  font-size: 13px;
+  color: var(--red);
 }
 
 /* -- Ignition ----------------------------------------------------------- */

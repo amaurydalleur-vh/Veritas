@@ -82,6 +82,21 @@ function shortAddr(addr) {
   return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 }
 
+function toValsNotice(error) {
+  const raw = String(error?.shortMessage || error?.message || "");
+  if (!raw.includes("VALS")) return "";
+  if (raw.includes("trade too large")) {
+    return "Trade blocked by VALS: order size exceeds the 20% pool hard cap. Reduce size and retry.";
+  }
+  if (raw.includes("circuit breaker active")) {
+    return "Trade temporarily blocked by VALS circuit breaker. Wait a few seconds, then retry.";
+  }
+  if (raw.includes("slippage too high")) {
+    return "Trade blocked by VALS slippage guard. Adjust size/price tolerance and retry.";
+  }
+  return "Trade blocked by VALS protection. Please retry with a smaller size or after a short delay.";
+}
+
 // ──────────────────────────────────────────────────────────────────────────
 
 function MarketDetailPage({ market, onBack }) {
@@ -107,6 +122,7 @@ function MarketDetailPage({ market, onBack }) {
   const [lpBurnYesShares, setLpBurnYesShares] = useState("0");
   const [lpBurnNoShares, setLpBurnNoShares] = useState("0");
   const [deployIdleToBonds, setDeployIdleToBonds] = useState(true);
+  const [valsNotice, setValsNotice] = useState("");
   const [lastExecutionReceipt, setLastExecutionReceipt] = useState(null);
   const [liveHistory, setLiveHistory] = useState(() => {
     if (Array.isArray(market.history) && market.history.length > 0) return market.history;
@@ -376,6 +392,17 @@ function MarketDetailPage({ market, onBack }) {
     refetchUserSharesYes,
     refetchUserSharesNo,
   ]);
+  useEffect(() => {
+    if (!tradeError) return;
+    const notice = toValsNotice(tradeError);
+    if (!notice) return;
+    setValsNotice(notice);
+    const timer = setTimeout(() => setValsNotice(""), 6000);
+    return () => clearTimeout(timer);
+  }, [tradeError]);
+  useEffect(() => {
+    if (tradeSuccess) setValsNotice("");
+  }, [tradeSuccess]);
 
   // ─── CLOB: Read nextOrderId (to know the ID before placing) ────────────
 
@@ -526,6 +553,13 @@ function MarketDetailPage({ market, onBack }) {
 
   return (
     <div className="container page">
+      {valsNotice && (
+        <div className="vals-popup" role="alert" aria-live="assertive">
+          <strong>VALS Protection</strong>
+          <p>{valsNotice}</p>
+          <button type="button" onClick={() => setValsNotice("")}>Dismiss</button>
+        </div>
+      )}
       <button className="btn btn-ghost" onClick={onBack}>
         Back to Markets
       </button>
