@@ -8,10 +8,12 @@ import { fmt } from "../data/appData";
 import {
   useMarketInfo,
   useImpliedProbability,
+  useOrderBookPosition,
   useUSDCAllowance,
   useApproveUSDC,
   usePlaceOrder,
   useCancelOrder,
+  useClaimOrderBookPosition,
 } from "../web3/hooks";
 import { ADDRESSES, ABIS } from "../web3/contracts";
 
@@ -67,6 +69,7 @@ function MarketDetailPage({ market, onBack }) {
 
   const { data: mktInfo }     = useMarketInfo(mktAddr);
   const { data: impliedProb } = useImpliedProbability(mktAddr);
+  const { positionYes, positionNo } = useOrderBookPosition(mktAddr, walletAddress);
 
   // Derive display-ready probability
   const yesPct = mktAddr && impliedProb != null
@@ -108,6 +111,7 @@ function MarketDetailPage({ market, onBack }) {
     query: { enabled: !!ADDRESSES.orderBook },
   });
   const pendingOrderId = useRef(null);
+  const pendingCancelId = useRef(null);
 
   // ─── CLOB: Place order ──────────────────────────────────────────────────
 
@@ -122,8 +126,9 @@ function MarketDetailPage({ market, onBack }) {
   const handlePlaceOrder = async () => {
     if (!mktAddr || !walletAddress) return;
     // Snapshot the upcoming orderId BEFORE sending the tx
-    await refetchNextId();
-    pendingOrderId.current = nextOrderId?.toString() ?? null;
+    const refreshed = await refetchNextId();
+    pendingOrderId.current =
+      refreshed?.data?.toString() ?? nextOrderId?.toString() ?? null;
     placeOrder(mktAddr, limitSide === "YES", limitPrice, Number(limitSize));
   };
 
@@ -145,11 +150,30 @@ function MarketDetailPage({ market, onBack }) {
 
   const { cancelOrder, isSuccess: cancelOk } = useCancelOrder();
   const handleCancel = (orderId) => {
+    pendingCancelId.current = String(orderId);
     cancelOrder(orderId);
-    // Optimistically remove from local list
-    removeOrder(walletAddress, orderId);
-    setOpenOrders(loadOrders(walletAddress));
   };
+  useEffect(() => {
+    if (!cancelOk || !walletAddress || !pendingCancelId.current) return;
+    removeOrder(walletAddress, pendingCancelId.current);
+    setOpenOrders(loadOrders(walletAddress));
+    pendingCancelId.current = null;
+  }, [cancelOk, walletAddress]);
+
+  // CLOB claim (after settlement)
+  const {
+    claimPosition,
+    isPending: claimPending,
+    isConfirming: claimConfirming,
+    isSuccess: claimSuccess,
+    error: claimError,
+  } = useClaimOrderBookPosition();
+
+  const settled = !!(mktInfo && mktInfo[5]);
+  const outcomeYes = !!(mktInfo && mktInfo[6]);
+  const claimable = settled
+    ? (outcomeYes ? (positionYes ?? 0n) : (positionNo ?? 0n))
+    : 0n;
 
   // ─── AMM minority / majority display ───────────────────────────────────
 
@@ -426,6 +450,31 @@ function MarketDetailPage({ market, onBack }) {
                 <div className="ob-notice" style={{ color: "var(--jade)", marginTop: 8 }}>
                   Order placed!
                 </div>
+              )}
+
+              {settled && (
+                <>
+                  <div className="ob-notice" style={{ marginTop: 10 }}>
+                    Market settled. Claimable CLOB payout: <strong>${(Number(claimable) / 1e6).toFixed(2)}</strong>
+                  </div>
+                  <button
+                    className="btn btn-primary w100"
+                    disabled={!mktAddr || !walletAddress || claimable === 0n || claimPending || claimConfirming}
+                    onClick={() => claimPosition(mktAddr)}
+                  >
+                    {claimPending || claimConfirming ? "Claiming..." : "Claim CLOB Payout"}
+                  </button>
+                  {claimError && (
+                    <div className="ob-notice" style={{ color: "var(--red)", marginTop: 8 }}>
+                      {claimError.shortMessage ?? claimError.message}
+                    </div>
+                  )}
+                  {claimSuccess && (
+                    <div className="ob-notice" style={{ color: "var(--jade)", marginTop: 8 }}>
+                      CLOB payout claimed.
+                    </div>
+                  )}
+                </>
               )}
             </>
           )}

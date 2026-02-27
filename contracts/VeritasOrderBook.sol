@@ -6,6 +6,10 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "./VeritasMarket.sol";
 
+interface IVeritasFactoryRegistry {
+    function isMarket(address market) external view returns (bool);
+}
+
 /// @title  VeritasOrderBook
 /// @notice On-chain Central Limit Order Book (CLOB) for Veritas binary prediction markets.
 ///
@@ -43,6 +47,7 @@ contract VeritasOrderBook is ReentrancyGuard {
     // ─────────────────────────────────────────────
 
     IERC20  public immutable usdc;
+    address public immutable factory;
     address public immutable protocol;
 
     // ─────────────────────────────────────────────
@@ -121,10 +126,12 @@ contract VeritasOrderBook is ReentrancyGuard {
     // Constructor
     // ─────────────────────────────────────────────
 
-    constructor(address _usdc, address _protocol) {
+    constructor(address _usdc, address _factory, address _protocol) {
         require(_usdc     != address(0), "Zero usdc");
+        require(_factory  != address(0), "Zero factory");
         require(_protocol != address(0), "Zero protocol");
         usdc     = IERC20(_usdc);
+        factory  = _factory;
         protocol = _protocol;
     }
 
@@ -150,6 +157,7 @@ contract VeritasOrderBook is ReentrancyGuard {
         require(price >= 1 && price <= 99, "Price out of range");
         require(size  >  0,                "Zero size");
         require(market != address(0),      "Zero market");
+        require(IVeritasFactoryRegistry(factory).isMarket(market), "Unknown market");
         require(!VeritasMarket(market).settled(), "Market settled");
 
         // Escrow USDC
@@ -451,7 +459,9 @@ contract VeritasOrderBook is ReentrancyGuard {
         uint128 mask = yesBidMask[market];
         for (uint8 p = 99; p >= 1; p--) {
             if ((mask >> p) & 1 == 1) return (p, true);
+            if (p == 1) break;
         }
+        return (0, false);
     }
 
     /// @notice Best NO bid price currently in the book (highest NO price,
@@ -464,7 +474,9 @@ contract VeritasOrderBook is ReentrancyGuard {
         uint128 mask = noBidMask[market];
         for (uint8 p = 99; p >= 1; p--) {
             if ((mask >> p) & 1 == 1) return (p, true);
+            if (p == 1) break;
         }
+        return (0, false);
     }
 
     /// @notice Implied mid-price from the order book (simple average of best bids).
@@ -480,6 +492,7 @@ contract VeritasOrderBook is ReentrancyGuard {
             if (yesMid == 0 && (yMask >> p) & 1 == 1) yesMid = p;
             if (noMid  == 0 && (nMask >> p) & 1 == 1) noMid  = p;
             if (yesMid > 0 && noMid > 0) break;
+            if (p == 1) break;
         }
     }
 }

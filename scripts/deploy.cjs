@@ -75,7 +75,7 @@ async function main() {
   // ── 6. VeritasOrderBook ───────────────────────────────────────
   console.log("Deploying VeritasOrderBook...");
   const VeritasOrderBook = await hre.ethers.getContractFactory("VeritasOrderBook");
-  const orderBook = await VeritasOrderBook.deploy(usdcAddress, deployer.address);
+  const orderBook = await VeritasOrderBook.deploy(usdcAddress, factoryAddress, deployer.address);
   await orderBook.waitForDeployment();
   const orderBookAddress = await orderBook.getAddress();
   console.log("VeritasOrderBook deployed:", orderBookAddress);
