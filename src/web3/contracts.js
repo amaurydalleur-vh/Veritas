@@ -20,6 +20,8 @@ export const ADDRESSES = {
   oracle:      import.meta.env.VITE_ORACLE_ADDRESS       || deploymentJson.contracts?.MockOracle         || "",
   dutchAuction: import.meta.env.VITE_DUTCH_AUCTION_ADDRESS || deploymentJson.contracts?.VeritasDutchAuction || "",
   orderBook:   import.meta.env.VITE_ORDER_BOOK_ADDRESS   || deploymentJson.contracts?.VeritasOrderBook   || "",
+  treasuryRouter: import.meta.env.VITE_TREASURY_ROUTER_ADDRESS || deploymentJson.contracts?.VeritasTreasuryRouter || "",
+  bondAdapter: import.meta.env.VITE_BOND_ADAPTER_ADDRESS || deploymentJson.contracts?.MockBondAdapter || "",
 };
 
 export const ABIS = {

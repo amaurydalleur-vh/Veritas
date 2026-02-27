@@ -9,6 +9,9 @@ import {
   useMarketInfo,
   useImpliedProbability,
   useOrderBookPosition,
+  useMarketTreasuryRouter,
+  useOrderBookTreasuryRouter,
+  useTreasuryRouterStatus,
   useRedeem,
   useTrade,
   useAddLiquidityAsymmetric,
@@ -74,6 +77,11 @@ function persistHistory(marketAddr, history) {
   localStorage.setItem(HIST_KEY(marketAddr), JSON.stringify(history.slice(-60)));
 }
 
+function shortAddr(addr) {
+  if (!addr || addr.length < 10) return "Not configured";
+  return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+}
+
 // ──────────────────────────────────────────────────────────────────────────
 
 function MarketDetailPage({ market, onBack }) {
@@ -98,6 +106,7 @@ function MarketDetailPage({ market, onBack }) {
   const [lpAddNoAmount, setLpAddNoAmount] = useState("50");
   const [lpBurnYesShares, setLpBurnYesShares] = useState("0");
   const [lpBurnNoShares, setLpBurnNoShares] = useState("0");
+  const [deployIdleToBonds, setDeployIdleToBonds] = useState(true);
   const [lastExecutionReceipt, setLastExecutionReceipt] = useState(null);
   const [liveHistory, setLiveHistory] = useState(() => {
     if (Array.isArray(market.history) && market.history.length > 0) return market.history;
@@ -148,6 +157,12 @@ function MarketDetailPage({ market, onBack }) {
     functionName: "totalSharesNo",
     query: { enabled: !!mktAddr },
   });
+  const { data: marketTreasuryRouter } = useMarketTreasuryRouter(mktAddr);
+  const { data: orderBookTreasuryRouter } = useOrderBookTreasuryRouter();
+  const activeMarketRouter = marketTreasuryRouter && marketTreasuryRouter !== "0x0000000000000000000000000000000000000000"
+    ? marketTreasuryRouter
+    : (ADDRESSES.treasuryRouter || "");
+  const marketTreasury = useTreasuryRouterStatus(activeMarketRouter);
 
   // Derive display-ready probability
   const yesPct = mktAddr && impliedProb != null
@@ -499,6 +514,13 @@ function MarketDetailPage({ market, onBack }) {
   const majorityApyDisplay = Number(market.majApy ?? 0) > 0 ? Number(market.majApy) : estimatedMajorityApy;
   const minorityYieldWeight = minoritySide === "BALANCED" ? 50 : Math.max(yesPct, noPct);
   const majorityYieldWeight = 100 - minorityYieldWeight;
+  const marketBufferPct = Number(marketTreasury.bufferBps ?? 0n) / 100;
+  const marketManagedUsd = Number(marketTreasury.totalManagedAssets ?? 0n) / 1e6;
+  const marketAccruedYieldUsd = Number(marketTreasury.accruedYield ?? 0n) / 1e6;
+  const routerLiquidBufferUsd = Number(marketTreasury.usdcBuffer ?? 0n) / 1e6;
+  const marketAdapter = marketTreasury.adapter;
+  const marketAdapterEnabled = !!marketAdapter && marketAdapter !== "0x0000000000000000000000000000000000000000";
+  const orderBookRouterActive = !!orderBookTreasuryRouter && orderBookTreasuryRouter !== "0x0000000000000000000000000000000000000000";
 
   // ──────────────────────────────────────────────────────────────────────────
 
@@ -985,6 +1007,12 @@ function MarketDetailPage({ market, onBack }) {
                   Limit orders require an on-chain market. Select one from the Markets page.
                 </div>
               )}
+              {mktAddr && (
+                <div className="ob-notice" style={{ marginBottom: 10 }}>
+                  Limit-order escrow can be routed to tokenized-bond collateral with on-demand redemption.
+                  Current CLOB router: <strong>{orderBookRouterActive ? shortAddr(orderBookTreasuryRouter) : "Not configured"}</strong>.
+                </div>
+              )}
 
               <div className="trade-side">
                 <button
@@ -1090,6 +1118,53 @@ function MarketDetailPage({ market, onBack }) {
                   Higher minority-side exposure generally increases contrarian yield weight.
                 </div>
               )}
+              {mktAddr && (
+                <div className="treasury-disclosure" tabIndex={0}>
+                  <div className="treasury-disclosure-row">
+                    <label className="toggle-line">
+                      <input
+                        type="checkbox"
+                        checked={deployIdleToBonds}
+                        disabled={!marketAdapterEnabled}
+                        onChange={(e) => setDeployIdleToBonds(e.target.checked)}
+                      />
+                      <span>
+                        Deploy idle capital to tokenized bonds ({marketAdapterEnabled ? "instant-redeem mode" : "unavailable"})
+                      </span>
+                    </label>
+                    <span className="treasury-arrow" aria-hidden="true">→</span>
+                  </div>
+                  <div className="treasury-hover-card">
+                    <div className="section-label" style={{ marginBottom: 8 }}>Capital Deployment Policy</div>
+                    <div className="trade-stats" style={{ marginBottom: 0 }}>
+                      <div>
+                        <span>Market treasury router</span>
+                        <strong>{activeMarketRouter ? shortAddr(activeMarketRouter) : "Not configured"}</strong>
+                      </div>
+                      <div>
+                        <span>Tokenized bond adapter</span>
+                        <strong>{marketAdapterEnabled ? shortAddr(marketAdapter) : "Not configured"}</strong>
+                      </div>
+                      <div>
+                        <span>Liquid safety buffer</span>
+                        <strong>{marketBufferPct > 0 ? `${marketBufferPct.toFixed(1)}%` : "10.0% target"}</strong>
+                      </div>
+                      <div>
+                        <span>Router liquid USDC</span>
+                        <strong>${routerLiquidBufferUsd.toFixed(2)}</strong>
+                      </div>
+                      <div>
+                        <span>Managed collateral</span>
+                        <strong>${marketManagedUsd.toFixed(2)}</strong>
+                      </div>
+                      <div>
+                        <span>Accrued collateral yield</span>
+                        <strong>${marketAccruedYieldUsd.toFixed(2)}</strong>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
               <label className="inp-label lp-info-label">
                 Add Liquidity (USDC)
                 <span className="info-wrap">
@@ -1103,9 +1178,16 @@ function MarketDetailPage({ market, onBack }) {
                     <br />
                     As skew increases, minority-side exposure receives higher yield weight.
                     Majority side still earns yield, typically at lower weight.
+                    <br />
+                    If treasury routing is enabled, idle collateral can be deployed to tokenized bonds with instant-redeem intent.
                   </span>
                 </span>
               </label>
+              {!marketAdapterEnabled && (
+                <div className="ob-notice" style={{ marginBottom: 10 }}>
+                  Tokenized-bond deployment is not configured for this market yet. LP remains fully in local reserves.
+                </div>
+              )}
               <div className="trade-stats">
                 <div>
                   <span>YES side amount</span>
@@ -1186,6 +1268,8 @@ function MarketDetailPage({ market, onBack }) {
                     Asymmetric withdrawal burns YES and NO LP shares independently.
                     <br />
                     This gives full control of your liquidity profile: reduce one side, keep the other.
+                    <br />
+                    Exit path targets router liquid buffer first, then pulls from adapter if required.
                     <br />
                     Burning more minority-side shares reduces contrarian yield exposure.
                     <br />

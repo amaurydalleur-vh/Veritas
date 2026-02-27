@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
-import { useMarketsInfo } from "../web3/hooks";
+import { useMarketsInfo, useTreasuryRouterStatus } from "../web3/hooks";
+import { ADDRESSES } from "../web3/contracts";
 
 function pct(v) {
   return `${v.toFixed(1)}%`;
@@ -17,9 +18,16 @@ function usd(v) {
 
 function YieldDeskPage() {
   const { data: marketsInfo } = useMarketsInfo(0, 200);
+  const treasury = useTreasuryRouterStatus(ADDRESSES.treasuryRouter);
   const [externalWallets, setExternalWallets] = useState("");
   const [outsideMajoritySide, setOutsideMajoritySide] = useState("YES");
   const [outsideThesis, setOutsideThesis] = useState("");
+  const treasuryBufferPct = Number(treasury.bufferBps ?? 1000n) / 100;
+  const treasuryManagedUsd = Number(treasury.totalManagedAssets ?? 0n) / 1e6;
+  const treasuryYieldUsd = Number(treasury.accruedYield ?? 0n) / 1e6;
+  const treasuryLiquidUsd = Number(treasury.usdcBuffer ?? 0n) / 1e6;
+  const treasuryAdapterOn = !!treasury.adapter && treasury.adapter !== "0x0000000000000000000000000000000000000000";
+  const treasuryRouterOn = !!ADDRESSES.treasuryRouter;
 
   const rows = useMemo(() => {
     if (!marketsInfo) return [];
@@ -173,6 +181,34 @@ function YieldDeskPage() {
             <strong>{snapshot.reserveSkew}</strong>
           </div>
         </div>
+        <div className="stats-inline" style={{ marginTop: 8 }}>
+          <div>
+            <label>Idle Capital Policy</label>
+            <strong>{treasuryAdapterOn ? "Tokenized-bond deployed" : "Local reserve only"}</strong>
+          </div>
+          <div>
+            <label>Liquid Safety Buffer</label>
+            <strong>{treasuryBufferPct.toFixed(1)}%</strong>
+          </div>
+          <div>
+            <label>Treasury Router</label>
+            <strong>{treasuryRouterOn ? "Configured" : "Not configured"}</strong>
+          </div>
+        </div>
+        <div className="stats-inline" style={{ marginTop: 8 }}>
+          <div>
+            <label>Managed Collateral</label>
+            <strong>{px(treasuryManagedUsd)}</strong>
+          </div>
+          <div>
+            <label>Liquid Buffer (USDC)</label>
+            <strong>{px(treasuryLiquidUsd)}</strong>
+          </div>
+          <div>
+            <label>Accrued Collateral Yield</label>
+            <strong>{px(treasuryYieldUsd)}</strong>
+          </div>
+        </div>
       </div>
 
       <section className="card tab-card" style={{ marginTop: 12 }}>
@@ -287,6 +323,10 @@ function YieldDeskPage() {
           Minority yield weight rises when one side reserve becomes relatively thinner. Majority side still earns
           yield, but at a lower relative weight. LP entry is asymmetry-capable and reserve profile is updated
           directly from live on-chain markets (including newly created and graduated markets).
+        </p>
+        <p className="text-soft" style={{ marginTop: 8 }}>
+          Zero-idle target: collateral can be deployed to instantly redeemable tokenized bonds while maintaining a
+          liquid {treasuryBufferPct.toFixed(1)}% buffer for exits, order cancelations, and settlement claims.
         </p>
       </section>
     </div>

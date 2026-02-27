@@ -34,6 +34,57 @@ const MARKET_ASYM_LP_ABI = [
   },
 ];
 
+const MARKET_TREASURY_ABI = [
+  {
+    type: "function",
+    name: "treasuryRouter",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "address" }],
+  },
+];
+
+const ROUTER_READ_ABI = [
+  {
+    type: "function",
+    name: "bufferBps",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "totalManagedAssets",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "accruedYield",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "adapter",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "address" }],
+  },
+];
+
+const ORDER_BOOK_TREASURY_ABI = [
+  {
+    type: "function",
+    name: "treasuryRouter",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "address" }],
+  },
+];
+
 // ─── Factory ──────────────────────────────────────────────────────────────
 
 /** Total number of deployed markets */
@@ -158,6 +209,76 @@ export function useAddLiquidity() {
   };
 
   return { addLiquidity, hash, isPending, isConfirming, isSuccess, error };
+}
+
+/** Treasury router configured on a market */
+export function useMarketTreasuryRouter(marketAddress) {
+  return useReadContract({
+    address: marketAddress,
+    abi: MARKET_TREASURY_ABI,
+    functionName: "treasuryRouter",
+    query: { enabled: !!marketAddress, refetchInterval: 15_000 },
+  });
+}
+
+/** Treasury router configured on the order book */
+export function useOrderBookTreasuryRouter() {
+  return useReadContract({
+    address: ADDRESSES.orderBook,
+    abi: ORDER_BOOK_TREASURY_ABI,
+    functionName: "treasuryRouter",
+    query: { enabled: !!ADDRESSES.orderBook, refetchInterval: 15_000 },
+  });
+}
+
+/** Router status (buffer, managed assets, accrued yield, adapter) */
+export function useTreasuryRouterStatus(routerAddress) {
+  const enabled = !!routerAddress && routerAddress !== "0x0000000000000000000000000000000000000000";
+  const bufferBps = useReadContract({
+    address: routerAddress,
+    abi: ROUTER_READ_ABI,
+    functionName: "bufferBps",
+    query: { enabled, refetchInterval: 15_000 },
+  });
+  const totalManagedAssets = useReadContract({
+    address: routerAddress,
+    abi: ROUTER_READ_ABI,
+    functionName: "totalManagedAssets",
+    query: { enabled, refetchInterval: 15_000 },
+  });
+  const accruedYield = useReadContract({
+    address: routerAddress,
+    abi: ROUTER_READ_ABI,
+    functionName: "accruedYield",
+    query: { enabled, refetchInterval: 15_000 },
+  });
+  const adapter = useReadContract({
+    address: routerAddress,
+    abi: ROUTER_READ_ABI,
+    functionName: "adapter",
+    query: { enabled, refetchInterval: 15_000 },
+  });
+  const usdcBuffer = useReadContract({
+    address: ADDRESSES.usdc,
+    abi: ABIS.usdc,
+    functionName: "balanceOf",
+    args: [routerAddress],
+    query: { enabled: enabled && !!ADDRESSES.usdc, refetchInterval: 15_000 },
+  });
+
+  return {
+    bufferBps: bufferBps.data,
+    totalManagedAssets: totalManagedAssets.data,
+    accruedYield: accruedYield.data,
+    adapter: adapter.data,
+    usdcBuffer: usdcBuffer.data,
+    isLoading:
+      bufferBps.isLoading ||
+      totalManagedAssets.isLoading ||
+      accruedYield.isLoading ||
+      adapter.isLoading ||
+      usdcBuffer.isLoading,
+  };
 }
 
 /** Hook to remove liquidity from a market by bps fraction (1..10000) */

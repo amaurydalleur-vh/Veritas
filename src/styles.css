@@ -548,6 +548,71 @@ body {
   gap: 8px;
 }
 
+.toggle-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--soft);
+  font-size: 13px;
+}
+
+.toggle-line input[type="checkbox"] {
+  accent-color: var(--accent);
+}
+
+.treasury-disclosure {
+  position: relative;
+  margin-bottom: 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface-2);
+  padding: 10px 12px;
+}
+
+.treasury-disclosure-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.treasury-arrow {
+  color: var(--muted);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.treasury-hover-card {
+  position: absolute;
+  top: -1px;
+  left: calc(100% + 10px);
+  width: 340px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  padding: 10px;
+  box-shadow: 0 10px 26px rgba(0, 19, 48, 0.16);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.14s ease;
+  z-index: 40;
+}
+
+.treasury-disclosure:hover .treasury-hover-card,
+.treasury-disclosure:focus-within .treasury-hover-card {
+  opacity: 1;
+  visibility: visible;
+}
+
+@media (max-width: 1260px) {
+  .treasury-hover-card {
+    left: 0;
+    top: calc(100% + 8px);
+    width: 100%;
+  }
+}
+
 .info-wrap {
   position: relative;
   display: inline-flex;
