@@ -8,6 +8,7 @@
     "build": "node ./node_modules/vite/bin/vite.js build",
     "preview": "node ./node_modules/vite/bin/vite.js preview",
     "compile": "npx hardhat compile --config hardhat.config.cjs",
+    "test:contracts": "npx hardhat test --config hardhat.config.cjs",
     "deploy:testnet": "npx hardhat run scripts/deploy.cjs --network arbitrumSepolia --config hardhat.config.cjs",
     "deploy:local": "npx hardhat run scripts/deploy.cjs --network localhost --config hardhat.config.cjs",
     "node": "npx hardhat node --config hardhat.config.cjs",

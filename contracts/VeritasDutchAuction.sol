@@ -23,7 +23,7 @@ import "./VeritasMarket.sol";
 ///   NO  bidder at P: "I'll provide liquidity at YES probability = P%"  (filled if clearingPrice ≥ P)
 ///
 /// CLEARING
-///   Demand buckets are swept to find P* = smallest P where cumulative NO demand ≥ cumulative YES demand.
+///   Clearing price P* is the USDC-weighted median revealed price across both sides.
 ///   ALL filled participants become LPs; their USDC seeds reserveNo and reserveYes proportional to P*.
 ///   reserveNo  = totalSeed * P* / 100
 ///   reserveYes = totalSeed * (100 - P*) / 100
@@ -265,7 +265,7 @@ contract VeritasDutchAuction is Ownable, ReentrancyGuard {
     /// CLEARING ALGORITHM (O(99)):
     ///   CumYesDemand[P] = sum of yesDemand[p] for p ∈ [P, 99]   (YES bidders willing to pay ≥ P)
     ///   CumNoDemand[P]  = sum of noDemand[p]  for p ∈ [1, P]    (NO  bidders willing to accept P)
-    ///   P* = smallest P where CumNoDemand[P] ≥ CumYesDemand[P]
+    ///   P* = USDC-weighted median of all revealed prices (YES + NO), lower median tie-break.
     ///
     ///   Total seed = min(CumYesDemand[P*], CumNoDemand[P*]) * 2  (balanced per side)
     ///   reserveNo  = totalSeed * P* / 100
@@ -298,20 +298,24 @@ contract VeritasDutchAuction is Ownable, ReentrancyGuard {
             cumNoAt[p]     = runningNo;
         }
 
-        // ── Find clearing price ───────────────────────────────────────────
-        // P* = smallest P where cumNoDemand[P] >= cumYesDemand[P]
-        // Default to 50 if there are no bids on either side.
+        // ── Find clearing price (USDC-weighted median of revealed prices) ──
+        // Default to 50 if there are no revealed bids.
         uint8 cp = 50;
-        bool found = false;
+        uint256 totalRevealed = 0;
         for (uint8 p = MIN_PRICE; p <= MAX_PRICE; p++) {
-            if (cumNoAt[p] >= cumYesAt[p]) {
-                cp    = p;
-                found = true;
-                break;
+            totalRevealed += yesDemand[id][p] + noDemand[id][p];
+        }
+        if (totalRevealed > 0) {
+            uint256 midpoint = (totalRevealed + 1) / 2; // lower median
+            uint256 running = 0;
+            for (uint8 p = MIN_PRICE; p <= MAX_PRICE; p++) {
+                running += yesDemand[id][p] + noDemand[id][p];
+                if (running >= midpoint) {
+                    cp = p;
+                    break;
+                }
             }
         }
-        // If YES always dominates (all bids are YES), clear at MAX_PRICE
-        if (!found) cp = MAX_PRICE;
 
         a.clearingPrice = cp;
 

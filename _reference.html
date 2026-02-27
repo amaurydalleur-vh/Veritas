@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>VERITAS — Yield-Bearing Prediction Markets</title>
+<title>VERITAS ï¿½ Yield-Bearing Prediction Markets</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;0,9..144,700;1,9..144,300;1,9..144,600&family=Space+Mono:ital,wght@0,400;0,700;1,400&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap" rel="stylesheet"/>
 <style>
@@ -581,7 +581,7 @@ const svgEl = (tag, attrs={}) => {
 
 const fmt = {
   usd: v => v >= 1e6 ? `$${(v/1e6).toFixed(2)}M` : v >= 1e3 ? `$${(v/1e3).toFixed(0)}K` : `$${v}`,
-  pct: v => `${(v*100).toFixed(0)}¢`,
+  pct: v => `${(v*100).toFixed(0)}ï¿½`,
   apy: v => `${v.toFixed(1)}%`,
 };
 
@@ -697,7 +697,7 @@ function Navbar() {
 function Ticker() {
   const bar = el('div',{'class':'ticker-bar'});
   const items = MARKETS.map(m =>
-    `<span class="ticker-item"><span class="t-q">${m.question.slice(0,40)}…</span><span class="t-yes">${(m.yes*100).toFixed(0)}¢ YES</span><span class="ticker-sep">·</span><span class="t-no">${(m.no*100).toFixed(0)}¢ NO</span></span><span class="ticker-sep">?</span>`
+    `<span class="ticker-item"><span class="t-q">${m.question.slice(0,40)}ï¿½</span><span class="t-yes">${(m.yes*100).toFixed(0)}ï¿½ YES</span><span class="ticker-sep">ï¿½</span><span class="t-no">${(m.no*100).toFixed(0)}ï¿½ NO</span></span><span class="ticker-sep">?</span>`
   ).join('');
   const track = el('div',{'class':'ticker-track'});
   track.innerHTML = items.repeat(4);
@@ -726,11 +726,11 @@ function Landing() {
   headline.innerHTML = `Predict.<br><em>Earn yield.</em><br>Repeat.`;
 
   const sub = el('p',{'class':'hero-sub'});
-  sub.innerHTML = `The first prediction market where minority LPs earn <strong style="color:var(--amber)">Treasury-grade yield</strong> through RWA gravity redistribution — fully permissionless, anti-manipulation by design.`;
+  sub.innerHTML = `The first prediction market where minority LPs earn <strong style="color:var(--amber)">Treasury-grade yield</strong> through RWA gravity redistribution ï¿½ fully permissionless, anti-manipulation by design.`;
 
   const ctaRow = el('div',{'class':'hero-cta-row'});
   const btn1 = el('button',{'class':'btn btn-primary','onClick':()=>navigate('markets')}, 'Explore Markets ?');
-  const btn2 = el('button',{'class':'btn btn-secondary','onClick':()=>navigate('ignition')}, '?? Launch a Market — $50');
+  const btn2 = el('button',{'class':'btn btn-secondary','onClick':()=>navigate('ignition')}, '?? Launch a Market ï¿½ $50');
   ctaRow.appendChild(btn1); ctaRow.appendChild(btn2);
 
   hero.appendChild(eyebrow); hero.appendChild(headline);
@@ -754,11 +754,11 @@ function Landing() {
 
   const grid = el('div',{'class':'feat-grid'});
   const feats = [
-    ['?','RWA Gravity','amber','Core Innovation','100% of Treasury bill yield redistributed from majority to minority using exponential gravity approaching settlement. Boost up to 4.75×.'],
+    ['?','RWA Gravity','amber','Core Innovation','100% of Treasury bill yield redistributed from majority to minority using exponential gravity approaching settlement. Boost up to 4.75ï¿½.'],
     ['?','Veritas Ignition','amber','$50 Launch','Create any prediction market for $50 with zero protocol subsidies. Anti-hype escrow injection prevents pump-and-dump at graduation.'],
     ['?','VALS Protection','jade','Anti-Toxic Flow','Bounded exponential slippage capped at 50% maximum. Adaptive circuit breakers distinguish genuine news events from toxic arbitrage.'],
     ['?','Yield-Bearing Orders','jade','Industry First','Passive limit orders earn 5% APY on underlying capital while waiting to execute. Your capital works before your trade even fills.'],
-    ['?','Inverse LP Fees','amber','Minority Premium','At 80/20 skew, minority LPs capture 80% of fees — not 20%. Fee weight is inverted by position size, rewarding contrarian risk.'],
+    ['?','Inverse LP Fees','amber','Minority Premium','At 80/20 skew, minority LPs capture 80% of fees ï¿½ not 20%. Fee weight is inverted by position size, rewarding contrarian risk.'],
     ['?','Dutch Auction Launch','jade','Fair Discovery','Sealed-bid bootstrapping prevents front-running on new markets. Median clearing price ensures fair price discovery with instant depth.'],
   ];
   feats.forEach(([icon,title,col,tag,desc]) => {
@@ -778,7 +778,7 @@ function Landing() {
   const apyCallout = el('div',{'class':'card anim-up4', style:{padding:'var(--s6)',marginTop:'var(--s8)',background:'rgba(13,21,32,0.8)',borderColor:'rgba(240,165,0,.15)'}});
   apyCallout.innerHTML = `
     <div class="flex-between mb-4">
-      <div class="section-label" style="margin-bottom:0">Example: 7-day market · $10M TVL · 80/20 skew</div>
+      <div class="section-label" style="margin-bottom:0">Example: 7-day market ï¿½ $10M TVL ï¿½ 80/20 skew</div>
       <span class="badge badge-amber">Economic Model</span>
     </div>
     <div class="grid-4" style="gap:1px;background:var(--border);border:1px solid var(--border);border-radius:8px;overflow:hidden">
@@ -817,7 +817,7 @@ function MarketCard(m) {
   const prices = el('div',{'class':'mkt-prices'});
   [['yes','YES',m.yes,'var(--jade)'],['no','NO',m.no,'var(--crimson)']].forEach(([cls,side,price,col]) => {
     const box = el('div',{'class':`mkt-price ${cls}`});
-    box.appendChild(el('div',{'class':'mkt-price-val'}, `${(price*100).toFixed(0)}¢`));
+    box.appendChild(el('div',{'class':'mkt-price-val'}, `${(price*100).toFixed(0)}ï¿½`));
     box.appendChild(el('div',{'class':'mkt-price-lbl'}, side));
     prices.appendChild(box);
   });
@@ -882,7 +882,7 @@ function MarketsPage() {
   const hdrRow = el('div',{'class':'flex-between'});
   const htitle = el('div');
   htitle.appendChild(el('h1',{'class':'page-title anim-up'}, 'Markets'));
-  htitle.appendChild(el('p',{'class':'page-sub anim-up2'}, `${MARKETS.filter(m=>m.phase==='core').length} live · ${MARKETS.filter(m=>m.phase==='ignition').length} ignition · earn yield on every position`));
+  htitle.appendChild(el('p',{'class':'page-sub anim-up2'}, `${MARKETS.filter(m=>m.phase==='core').length} live ï¿½ ${MARKETS.filter(m=>m.phase==='ignition').length} ignition ï¿½ earn yield on every position`));
   hdrRow.appendChild(htitle);
   const launchBtn = el('button',{'class':'btn btn-primary anim-up', onClick:()=>navigate('ignition')}, '+ Launch Market');
   hdrRow.appendChild(launchBtn);
@@ -946,10 +946,10 @@ function MarketDetailPage(m) {
   const chartCard = el('div',{'class':'card chart-card mb-4'});
   const chartHdr = el('div',{'class':'chart-header'});
   const priceInfo = el('div');
-  priceInfo.appendChild(el('div',{'class':'chart-price'}, `${(m.yes*100).toFixed(0)}¢`));
+  priceInfo.appendChild(el('div',{'class':'chart-price'}, `${(m.yes*100).toFixed(0)}ï¿½`));
   const changePct = ((m.yes - m.history[0]/100) * 100).toFixed(1);
   const changeEl = el('div',{'class':'chart-change', style:{color: parseFloat(changePct)>=0?'var(--jade)':'var(--crimson)'}});
-  changeEl.textContent = `${parseFloat(changePct)>=0?'+':''}${changePct}¢ from open`;
+  changeEl.textContent = `${parseFloat(changePct)>=0?'+':''}${changePct}ï¿½ from open`;
   priceInfo.appendChild(changeEl);
   const metaInfo = el('div',{'class':'chart-meta'});
   metaInfo.appendChild(el('div',{'class':'chart-meta-val'}, fmt.usd(m.tvl)));
@@ -987,7 +987,7 @@ function MarketDetailPage(m) {
           const row = el('div',{'class':'ob-row'});
           const fill = el('div',{'class':'ob-fill', style:{width:`${20+i*15}%`,background:`${bg}${0.12-i*0.02})`}});
           row.appendChild(fill);
-          row.appendChild(el('span',{style:{position:'relative',color:col,zIndex:'1'}}, p2+'¢'));
+          row.appendChild(el('span',{style:{position:'relative',color:col,zIndex:'1'}}, p2+'ï¿½'));
           row.appendChild(el('span',{style:{position:'relative',color:'var(--dim)',zIndex:'1'}}, s));
           side.appendChild(row);
         });
@@ -1011,7 +1011,7 @@ function MarketDetailPage(m) {
       d.appendChild(topStats);
 
       const breakdown = el('div',{'class':'card', style:{padding:'var(--s5)',marginBottom:'var(--s4)'}});
-      breakdown.appendChild(el('div',{'class':'section-label'}, 'Yield Breakdown — Minority Side'));
+      breakdown.appendChild(el('div',{'class':'section-label'}, 'Yield Breakdown ï¿½ Minority Side'));
       const bars = el('div',{'class':'yield-bar'});
       const yieldItems = [
         {l:'RWA Gravity Redistribution',v:'15.5%',pct:15,detail:'Treasury bill yield redistributed to minority',col:'var(--amber)'},
@@ -1040,7 +1040,7 @@ function MarketDetailPage(m) {
 
       // Gravity evolution
       const gravCard = el('div',{'class':'card', style:{padding:'var(--s5)'}});
-      gravCard.appendChild(el('div',{'class':'section-label'}, 'Gravity Evolution — Minority Yield Share (80/20 skew)'));
+      gravCard.appendChild(el('div',{'class':'section-label'}, 'Gravity Evolution ï¿½ Minority Yield Share (80/20 skew)'));
       const gravData = [22.5,28.3,35.1,42.1,52.8,65.8,80.2,95.0];
       gravCard.appendChild(sparkline(gravData, 620, 100, 'var(--amber)', 'var(--amber)'));
       const gravLbls = el('div',{'class':'flex-between mt-4'});
@@ -1053,10 +1053,10 @@ function MarketDetailPage(m) {
       const d = el('div',{'class':'card', style:{padding:'var(--s5)'}});
       d.appendChild(SectionLabel('Settlement Oracle Stack'));
       [
-        ['Tier 1','Pyth Network','active','jade','Price feeds — crypto, equities, forex','99.7%'],
+        ['Tier 1','Pyth Network','active','jade','Price feeds ï¿½ crypto, equities, forex','99.7%'],
         ['Tier 1','Chainlink','active','jade','Decentralized oracle network','99.9%'],
-        ['Tier 2','C2PA Verifier','standby','amber','Cryptographic media authentication','—'],
-        ['Tier 3','UMA Dispute','standby','amber','Economic dispute resolution (24h challenge)','—'],
+        ['Tier 2','C2PA Verifier','standby','amber','Cryptographic media authentication','ï¿½'],
+        ['Tier 3','UMA Dispute','standby','amber','Economic dispute resolution (24h challenge)','ï¿½'],
       ].forEach(([tier,name,status,col,role,uptime],i,arr) => {
         const row = el('div',{'class':'flex gap-4', style:{padding:'12px 0',borderBottom:i<arr.length-1?'1px solid var(--border)':'none',alignItems:'center'}});
         row.appendChild(Badge(tier, col==='jade'?'jade':'amber'));
@@ -1066,12 +1066,12 @@ function MarketDetailPage(m) {
         row.appendChild(info);
         const right = el('div',{style:{textAlign:'right',display:'flex',flexDirection:'column',alignItems:'flex-end',gap:'4px'}});
         right.appendChild(LiveDot(col==='jade'?'jade':'amber'));
-        if (uptime!=='—') right.appendChild(el('span',{'class':'text-mono text-xs', style:{color:'var(--jade)'}},uptime));
+        if (uptime!=='ï¿½') right.appendChild(el('span',{'class':'text-mono text-xs', style:{color:'var(--jade)'}},uptime));
         row.appendChild(right);
         d.appendChild(row);
       });
       const note = el('div',{style:{marginTop:'var(--s4)',padding:'10px 12px',background:'rgba(240,165,0,.05)',border:'1px solid rgba(240,165,0,.15)',borderRadius:'6px'}});
-      note.innerHTML = `<div class="text-mono text-xs text-amber" style="font-weight:700;margin-bottom:2px">TWAP Settlement: 1-hour window</div><div class="text-xs text-muted">3/5 oracle consensus required · Challenge period: 24 hours</div>`;
+      note.innerHTML = `<div class="text-mono text-xs text-amber" style="font-weight:700;margin-bottom:2px">TWAP Settlement: 1-hour window</div><div class="text-xs text-muted">3/5 oracle consensus required ï¿½ Challenge period: 24 hours</div>`;
       d.appendChild(note);
       return d;
     }
@@ -1097,8 +1097,8 @@ function MarketDetailPage(m) {
   panel.appendChild(el('div',{'class':'trade-title'}, 'Trade'));
 
   const sideToggle = el('div',{'class':'side-toggle'});
-  const yesBtn = el('button',{'class':'btn-yes active w100', onClick:()=>{tradeType='YES';updateTrade();}}, `YES · ${(m.yes*100).toFixed(0)}¢`);
-  const noBtn  = el('button',{'class':'btn-no w100',    onClick:()=>{tradeType='NO' ;updateTrade();}}, `NO  · ${(m.no*100).toFixed(0)}¢`);
+  const yesBtn = el('button',{'class':'btn-yes active w100', onClick:()=>{tradeType='YES';updateTrade();}}, `YES ï¿½ ${(m.yes*100).toFixed(0)}ï¿½`);
+  const noBtn  = el('button',{'class':'btn-no w100',    onClick:()=>{tradeType='NO' ;updateTrade();}}, `NO  ï¿½ ${(m.no*100).toFixed(0)}ï¿½`);
   sideToggle.appendChild(yesBtn); sideToggle.appendChild(noBtn);
   panel.appendChild(sideToggle);
 
@@ -1122,12 +1122,12 @@ function MarketDetailPage(m) {
   const summaryEl = el('div',{'class':'trade-summary'});
   panel.appendChild(summaryEl);
 
-  const minBadge = el('div',{'class':'minority-badge', style:{display:'none'}}, '? Minority position — earning premium yield via RWA gravity');
+  const minBadge = el('div',{'class':'minority-badge', style:{display:'none'}}, '? Minority position ï¿½ earning premium yield via RWA gravity');
   panel.appendChild(minBadge);
 
   const buyBtn = el('button',{'class':'buy-btn yes'}, 'Buy YES');
   panel.appendChild(buyBtn);
-  panel.appendChild(el('div',{'class':'trade-footer'}, 'VALS-protected AMM · Base Network'));
+  panel.appendChild(el('div',{'class':'trade-footer'}, 'VALS-protected AMM ï¿½ Base Network'));
 
   function updateTrade() {
     const amt = parseFloat(amtInp.value)||0;
@@ -1139,11 +1139,11 @@ function MarketDetailPage(m) {
 
     yesBtn.className = `btn-yes w100${isYes?' active':''}`;
     noBtn.className  = `btn-no w100${!isYes?' active':''}`;
-    buyBtn.textContent = `Buy ${tradeType}${amt?` · $${parseInt(amtInp.value).toLocaleString()}`:''}`;
+    buyBtn.textContent = `Buy ${tradeType}${amt?` ï¿½ $${parseInt(amtInp.value).toLocaleString()}`:''}`;
     buyBtn.className = `buy-btn ${isYes?'yes':'no'}`;
 
     summaryEl.innerHTML = '';
-    [['Price',`${(price*100).toFixed(0)}¢`,''],
+    [['Price',`${(price*100).toFixed(0)}ï¿½`,''],
      ['Shares',amt?`${(amt/price).toFixed(1)}`:'-',''],
      ['Fee (1.5%)',amt?`$${(amt*.015).toFixed(2)}`:'-',''],
      ['APY earned',`${apy.toFixed(1)}%`,isMinority?'amber':''],
@@ -1157,7 +1157,7 @@ function MarketDetailPage(m) {
     if(amt>0){
       valsBox.style.display='block';
       valsBox.className=`vals-box ${slippage>20?'danger':slippage>8?'warn':'safe'}`;
-      valsBox.innerHTML=`<div class="vals-title" style="color:${slippage>20?'var(--crimson)':slippage>8?'var(--amber)':'var(--jade)'}">VALS Slippage: ${slippage.toFixed(1)}%</div><div class="vals-sub">${slippage>20?'High impact — consider splitting order':slippage>8?'Moderate impact':'Within normal range'}</div>`;
+      valsBox.innerHTML=`<div class="vals-title" style="color:${slippage>20?'var(--crimson)':slippage>8?'var(--amber)':'var(--jade)'}">VALS Slippage: ${slippage.toFixed(1)}%</div><div class="vals-sub">${slippage>20?'High impact ï¿½ consider splitting order':slippage>8?'Moderate impact':'Within normal range'}</div>`;
     } else { valsBox.style.display='none'; }
 
     minBadge.style.display = isMinority ? 'block' : 'none';
@@ -1214,7 +1214,7 @@ function IgnitionPage() {
   // How it works
   const howCard = el('div',{'class':'how-section'});
   howCard.appendChild(el('div',{'class':'section-label'}, 'How Ignition Works'));
-  [['01','Pay $50','Non-refundable creation fee. Bonding curve at k=100M initialises at 50¢/50¢.'],
+  [['01','Pay $50','Non-refundable creation fee. Bonding curve at k=100M initialises at 50ï¿½/50ï¿½.'],
    ['02','Bonding Phase','Up to 30 days. Capital locked. 50% of fees escrowed for anti-hump injection.'],
    ['03','Graduation','$10K TVL + 30 participants ? escrow injected into minority ? migrate to Core.'],
    ['04','Failure Safety','Miss threshold? 100% of depositor capital refunded. Protocol keeps $50 only.'],
@@ -1242,7 +1242,7 @@ function IgnitionPage() {
       succ.appendChild(subTxt);
       const box = el('div',{'class':'success-box'});
       box.appendChild(el('div',{'class':'text-mono text-xs text-amber', style:{fontWeight:'700',marginBottom:'8px'}}, form.question||'Your question'));
-      [['Status','?? Ignition Phase'],['Initial Price','50¢ YES / 50¢ NO'],['TVL Target','$10,000'],['Max Duration','30 days']].forEach(([k,v]) => {
+      [['Status','?? Ignition Phase'],['Initial Price','50ï¿½ YES / 50ï¿½ NO'],['TVL Target','$10,000'],['Max Duration','30 days']].forEach(([k,v]) => {
         const r = el('div',{'class':'ts-row'});
         r.appendChild(el('span',{'class':'ts-key'},k));
         r.appendChild(el('span',{'class':'ts-val'},v));
@@ -1326,7 +1326,7 @@ function IgnitionPage() {
       preview.appendChild(Badge(form.category,'sky'));
       const qText = el('p',{style:{fontSize:'14px',fontWeight:'600',lineHeight:'1.5',margin:'10px 0 var(--s4)'}}, form.question||'[No question entered]');
       preview.appendChild(qText);
-      [['Deadline',form.deadline||'—'],['Oracle',form.oracle.toUpperCase()],['Starting Price','50¢ YES / 50¢ NO'],['Bonding Curve K','100,000,000 (virtual)']].forEach(([k,v]) => {
+      [['Deadline',form.deadline||'ï¿½'],['Oracle',form.oracle.toUpperCase()],['Starting Price','50ï¿½ YES / 50ï¿½ NO'],['Bonding Curve K','100,000,000 (virtual)']].forEach(([k,v]) => {
         const r = el('div',{'class':'ts-row'}); r.appendChild(el('span',{'class':'ts-key'},k)); r.appendChild(el('span',{'class':'ts-val'},v)); preview.appendChild(r);
       });
       body.appendChild(preview);
@@ -1350,7 +1350,7 @@ function IgnitionPage() {
       const next = el('button',{'class':'btn btn-primary', onClick:()=>{if(form.question||step>1){step++;renderForm();}}}, 'Continue ?');
       footer.appendChild(next);
     } else {
-      const launch = el('button',{'class':'btn btn-primary', style:{flex:'1'}, onClick:()=>{if(form.question){launched=true;renderForm();}}}, '?? Launch Market — $50');
+      const launch = el('button',{'class':'btn btn-primary', style:{flex:'1'}, onClick:()=>{if(form.question){launched=true;renderForm();}}}, '?? Launch Market ï¿½ $50');
       footer.appendChild(launch);
     }
     body.appendChild(footer);
@@ -1373,8 +1373,8 @@ function PortfolioPage() {
   wrap.appendChild(el('h1',{'class':'page-title anim-up mb-4'}, 'Portfolio'));
   const walletRow = el('div',{'class':'flex gap-2 mb-6'});
   walletRow.appendChild(LiveDot());
-  walletRow.appendChild(el('span',{'class':'text-mono text-xs', style:{color:'var(--jade)'}}, '0x3A9f…B842'));
-  walletRow.appendChild(el('span',{'class':'text-mono text-xs text-muted'}, '· Base Network'));
+  walletRow.appendChild(el('span',{'class':'text-mono text-xs', style:{color:'var(--jade)'}}, '0x3A9fï¿½B842'));
+  walletRow.appendChild(el('span',{'class':'text-mono text-xs text-muted'}, 'ï¿½ Base Network'));
   wrap.appendChild(walletRow);
 
   // Stat tiles
@@ -1417,8 +1417,8 @@ function PortfolioPage() {
     const mkt = MARKETS.find(m=>m.id===pos.mktId);
     const row = el('tr', {onClick:()=>navigate('market',mkt), style:{cursor:'pointer'}});
     const mtd = el('td');
-    mtd.appendChild(el('div',{style:{fontSize:'12px',fontWeight:'500',color:'var(--white)',maxWidth:'160px',lineHeight:'1.3'}}, mkt?.question.slice(0,52)+'…'));
-    mtd.appendChild(el('div',{'class':'text-xs text-muted mt-4'}, `${mkt?.category} · ${mkt?.days}d left`));
+    mtd.appendChild(el('div',{style:{fontSize:'12px',fontWeight:'500',color:'var(--white)',maxWidth:'160px',lineHeight:'1.3'}}, mkt?.question.slice(0,52)+'ï¿½'));
+    mtd.appendChild(el('div',{'class':'text-xs text-muted mt-4'}, `${mkt?.category} ï¿½ ${mkt?.days}d left`));
     row.appendChild(mtd);
     row.appendChild(el('td',{}, Badge(pos.side, pos.side==='YES'?'jade':'red')));
     row.appendChild(el('td',{class:'r text-mono text-sm'}, `$${pos.cost.toLocaleString()}`));
@@ -1432,7 +1432,7 @@ function PortfolioPage() {
 
   // APY History chart
   const apyCard = el('div',{'class':'card', style:{padding:'var(--s5)'}});
-  apyCard.appendChild(el('div',{'class':'section-label'}, 'Portfolio APY — Last 7 Days'));
+  apyCard.appendChild(el('div',{'class':'section-label'}, 'Portfolio APY ï¿½ Last 7 Days'));
   apyCard.appendChild(el('div',{style:{color:'var(--muted)',fontSize:'12px',marginBottom:'var(--s4)',fontWeight:'300'}},'Blended yield across all active positions'));
   apyCard.appendChild(barChart(P.apyHistory, 540, 90, '#F0A500'));
   left.appendChild(apyCard);
@@ -1467,7 +1467,7 @@ function PortfolioPage() {
   const commitCard = el('div',{'class':'card', style:{padding:'var(--s5)'}});
   commitCard.appendChild(el('div',{'class':'section-label'}, 'Commitment Status'));
   const note = el('div',{style:{background:'rgba(0,229,160,.05)',border:'1px solid rgba(0,229,160,.15)',borderRadius:'6px',padding:'10px 12px',marginBottom:'var(--s4)'}});
-  note.innerHTML=`<div class="text-mono text-xs" style="color:var(--jade);font-weight:700;margin-bottom:3px">All positions committed ?</div><div class="text-xs text-muted">Holding to settlement earns 3.5–4× vs early exit</div>`;
+  note.innerHTML=`<div class="text-mono text-xs" style="color:var(--jade);font-weight:700;margin-bottom:3px">All positions committed ?</div><div class="text-xs text-muted">Holding to settlement earns 3.5ï¿½4ï¿½ vs early exit</div>`;
   commitCard.appendChild(note);
   [['Completion bonus at risk','$2,840'],['Linear vested so far','$4,000'],['Early exit penalty','50% yield forfeit']].forEach(([k,v]) => {
     const r = el('div',{'class':'ts-row'}); r.appendChild(el('span',{'class':'ts-key'},k)); r.appendChild(el('span',{'class':'ts-val'},v)); commitCard.appendChild(r);
@@ -1485,17 +1485,17 @@ function DocsPage() {
   const inner = el('div',{'class':'docs-layout'});
 
   const hdr = el('div',{style:{marginBottom:'var(--s10)'}});
-  hdr.appendChild(Badge('Technical Litepaper · Feb 2026','amber'));
+  hdr.appendChild(Badge('Technical Litepaper ï¿½ Feb 2026','amber'));
   const h = el('h1',{'class':'page-title anim-up', style:{marginTop:'var(--s4)',marginBottom:'6px',fontSize:'48px'}});
   h.innerHTML = `VERITAS`;
   hdr.appendChild(h);
-  hdr.appendChild(el('p',{style:{color:'var(--body)',fontSize:'16px',fontFamily:'var(--f-display)',fontStyle:'italic',fontWeight:'300'}},'Yield-Bearing Prediction Markets — Production Architecture'));
+  hdr.appendChild(el('p',{style:{color:'var(--body)',fontSize:'16px',fontFamily:'var(--f-display)',fontStyle:'italic',fontWeight:'300'}},'Yield-Bearing Prediction Markets ï¿½ Production Architecture'));
   inner.appendChild(hdr);
 
   const sections = [
     ['Executive Summary','Veritas solves two fundamental problems in prediction markets: idle capital earning 0% return, and prohibitive barriers to market creation. Core innovations include Veritas Ignition ($50 permissionless creation), RWA Gravity (Treasury yield redistribution majority?minority), Bounded VALS (50% slippage cap), Inverse-Weighted LP Fees, and Wash-Trading Immunity.'],
-    ['RWA Gravity Redistribution','Total RWA yield = TVL × 5% × (T_elapsed / 365). Gravity_factor = (T_total / T_remaining)^1.5 × (W_maj / W_min)^0.3. The tanh() function caps minority share at 95%. Majority always receives minimum 5%. At 80/20 skew with 7 days to settlement, minority share reaches 95% — a 4.75× boost vs proportional allocation.'],
-    ['VALS — Bounded Slippage','P(execution) = P(cp) × min(e^[? × (?x/L) × tanh(s)], 1.5 × P(cp)). Hard cap: 50% maximum slippage. Adaptive circuit breakers distinguish genuine news events (2–5s pause) from toxic arbitrage (full penalty applied). Priority fee bypass: 0.5–2% premium reduces VALS proportionally.'],
+    ['RWA Gravity Redistribution','Total RWA yield = TVL ï¿½ 5% ï¿½ (T_elapsed / 365). Gravity_factor = (T_total / T_remaining)^1.5 ï¿½ (W_maj / W_min)^0.3. The tanh() function caps minority share at 95%. Majority always receives minimum 5%. At 80/20 skew with 7 days to settlement, minority share reaches 95% ï¿½ a 4.75ï¿½ boost vs proportional allocation.'],
+    ['VALS ï¿½ Bounded Slippage','P(execution) = P(cp) ï¿½ min(e^[? ï¿½ (?x/L) ï¿½ tanh(s)], 1.5 ï¿½ P(cp)). Hard cap: 50% maximum slippage. Adaptive circuit breakers distinguish genuine news events (2ï¿½5s pause) from toxic arbitrage (full penalty applied). Priority fee bypass: 0.5ï¿½2% premium reduces VALS proportionally.'],
     ['Veritas Ignition Mechanics','$50 USDC creation fee. Bonding curve k=100,000,000. Starting: 10,000 virtual YES + NO shares at $0.50. Graduation: $10K TVL + 30 unique addresses + <30 days. Fee split: 50% escrowed ? minority injection at graduation, 33% protocol, 17% safety module. Post-graduation: 14-day linear vesting. Failed market: 100% participant refund.'],
     ['Settlement & Oracle Stack','TWAP window: 1 hour. Primary: Pyth + Chainlink (3/5 consensus). Tier 2: C2PA media authentication. Tier 3: UMA optimistic oracle (24h challenge period, 1% TVL stake required). Economic security: attacking a $10M market costs >$1M. UMA voters are economically incentivised to rule correctly.'],
     ['Security Architecture','3/5 multisig for critical functions. 48h timelock for parameter changes, 7 days for upgrades. Emergency pause: 2/5 signatures (immediate). Safety module: 10% of protocol earnings reserved. Coverage: oracle failure up to 20% TVL, smart contract exploit up to 100% of affected funds.'],
