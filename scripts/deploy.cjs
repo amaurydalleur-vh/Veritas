@@ -88,9 +88,9 @@ async function main() {
   await (await usdc.approve(factoryAddress, seedPerMarket * 3n)).wait();
 
   const markets = [
-    { question: "Will the Fed cut rates in Q3 2025?",           duration: 90 * 24 * 3600 },
+    { question: "Will the Fed cut rates in Q3 2026?",           duration: 90 * 24 * 3600 },
     { question: "Will ETH exceed $5,000 before Jan 1, 2026?",  duration: 60 * 24 * 3600 },
-    { question: "Will the US CPI print below 3% in May 2025?", duration: 45 * 24 * 3600 },
+    { question: "Will the US CPI print below 3% in May 2027?", duration: 45 * 24 * 3600 },
   ];
 
   const deployedMarkets = [];
