@@ -9,8 +9,8 @@ import {
   useMarketInfo,
   useImpliedProbability,
   useOrderBookPosition,
-  useAddLiquidity,
-  useRemoveLiquidity,
+  useAddLiquidityAsymmetric,
+  useRemoveLiquidityAsymmetric,
   useUSDCAllowance,
   useApproveUSDC,
   usePlaceOrder,
@@ -58,8 +58,10 @@ function MarketDetailPage({ market, onBack }) {
   const [limitPrice, setLimitPrice] = useState(50);
   const [limitSize, setLimitSize]   = useState("100");
   // LP form
-  const [lpAddAmount, setLpAddAmount] = useState("100");
-  const [lpRemovePct, setLpRemovePct] = useState(25);
+  const [lpAddYesAmount, setLpAddYesAmount] = useState("50");
+  const [lpAddNoAmount, setLpAddNoAmount] = useState("50");
+  const [lpBurnYesShares, setLpBurnYesShares] = useState("0");
+  const [lpBurnNoShares, setLpBurnNoShares] = useState("0");
 
   // Open orders (localStorage-backed)
   const [openOrders, setOpenOrders] = useState(() => loadOrders(walletAddress));
@@ -131,17 +133,42 @@ function MarketDetailPage({ market, onBack }) {
   const needsApproval = !allowance || allowance < limitSizeWei;
 
   // LP approval and actions
-  const lpAddWei = useMemo(() => {
-    try { return parseUnits(lpAddAmount || "0", 6); }
+  const lpAddYesWei = useMemo(() => {
+    try { return parseUnits(lpAddYesAmount || "0", 6); }
     catch { return 0n; }
-  }, [lpAddAmount]);
+  }, [lpAddYesAmount]);
+  const lpAddNoWei = useMemo(() => {
+    try { return parseUnits(lpAddNoAmount || "0", 6); }
+    catch { return 0n; }
+  }, [lpAddNoAmount]);
+  const lpAddTotalWei = lpAddYesWei + lpAddNoWei;
+  const lpBurnYesWei = useMemo(() => {
+    try { return parseUnits(lpBurnYesShares || "0", 6); }
+    catch { return 0n; }
+  }, [lpBurnYesShares]);
+  const lpBurnNoWei = useMemo(() => {
+    try { return parseUnits(lpBurnNoShares || "0", 6); }
+    catch { return 0n; }
+  }, [lpBurnNoShares]);
   const { data: lpAllowance, refetch: refetchLpAllowance } = useUSDCAllowance(
     walletAddress,
     mktAddr
   );
-  const needsLpApproval = !!mktAddr && (!lpAllowance || lpAllowance < lpAddWei);
-  const { addLiquidity, isPending: addLpPending, isConfirming: addLpConfirming, isSuccess: addLpSuccess, error: addLpError } = useAddLiquidity();
-  const { removeLiquidity, isPending: rmLpPending, isConfirming: rmLpConfirming, isSuccess: rmLpSuccess, error: rmLpError } = useRemoveLiquidity();
+  const needsLpApproval = !!mktAddr && lpAddTotalWei > 0n && (!lpAllowance || lpAllowance < lpAddTotalWei);
+  const {
+    addLiquidityAsymmetric,
+    isPending: addLpPending,
+    isConfirming: addLpConfirming,
+    isSuccess: addLpSuccess,
+    error: addLpError,
+  } = useAddLiquidityAsymmetric();
+  const {
+    removeLiquidityAsymmetric,
+    isPending: rmLpPending,
+    isConfirming: rmLpConfirming,
+    isSuccess: rmLpSuccess,
+    error: rmLpError,
+  } = useRemoveLiquidityAsymmetric();
   useEffect(() => {
     if (!addLpSuccess && !rmLpSuccess) return;
     refetchLpAllowance();
@@ -261,12 +288,11 @@ function MarketDetailPage({ market, onBack }) {
     ? (((userSharesNo ?? 0n) * reserveNo) / totalSharesNo)
     : 0n;
   const userLpNotional = userLpUnderlyingYes + userLpUnderlyingNo;
-  const removeBps = BigInt(lpRemovePct * 100);
   const estRemoveYes = (totalSharesYes && totalSharesYes > 0n)
-    ? (((userSharesYes ?? 0n) * removeBps * reserveYes) / (10_000n * totalSharesYes))
+    ? ((lpBurnYesWei * reserveYes) / totalSharesYes)
     : 0n;
   const estRemoveNo = (totalSharesNo && totalSharesNo > 0n)
-    ? (((userSharesNo ?? 0n) * removeBps * reserveNo) / (10_000n * totalSharesNo))
+    ? ((lpBurnNoWei * reserveNo) / totalSharesNo)
     : 0n;
 
   // ─── AMM minority / majority display ───────────────────────────────────
@@ -424,7 +450,7 @@ function MarketDetailPage({ market, onBack }) {
 
         {/* ── Right: Trade sidebar ───────────────────────────────────────── */}
         <aside className="card trade-card">
-          <h3>{tab === "lp" ? "Liquidity Provider" : "Trade"}</h3>
+          <h3>{tab === "lp" ? "Liquidity Provision Console" : "Trade"}</h3>
 
           {/* Market / Limit sub-tabs */}
           {tab === "trade" && (
@@ -616,27 +642,73 @@ function MarketDetailPage({ market, onBack }) {
                   LP actions require an on-chain market. Select one from the Markets page.
                 </div>
               )}
-              <label className="inp-label">Add Liquidity (USDC)</label>
-              <input
-                className="inp"
-                value={lpAddAmount}
-                onChange={(e) => setLpAddAmount(e.target.value)}
-              />
+              <label className="inp-label lp-info-label">
+                Add Liquidity (USDC)
+                <span className="info-wrap">
+                  <span className="info-dot" aria-label="Liquidity info">i</span>
+                  <span className="info-bubble">
+                    LP deposits are capital allocated to market reserves.
+                    <br />
+                    Symmetric LP means YES and NO are funded equally.
+                    <br />
+                    Asymmetric LP means you choose different YES/NO allocation.
+                    <br />
+                    As skew increases, minority-side exposure receives higher yield weight.
+                    Majority side still earns yield, typically at lower weight.
+                  </span>
+                </span>
+              </label>
+              <div className="trade-stats">
+                <div>
+                  <span>YES side amount</span>
+                  <input
+                    className="inp"
+                    value={lpAddYesAmount}
+                    onChange={(e) => setLpAddYesAmount(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <span>NO side amount</span>
+                  <input
+                    className="inp"
+                    value={lpAddNoAmount}
+                    onChange={(e) => setLpAddNoAmount(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="trade-stats">
+                <div>
+                  <span>Total deposit</span>
+                  <strong>${(Number(lpAddTotalWei) / 1e6).toFixed(2)}</strong>
+                </div>
+                <div>
+                  <span>Current minority side</span>
+                  <strong>{minoritySide}</strong>
+                </div>
+              </div>
               {needsLpApproval ? (
                 <button
                   className="btn btn-primary w100"
                   disabled={!mktAddr || !walletAddress}
-                  onClick={() => approve(mktAddr, lpAddAmount)}
+                  onClick={() => approve(mktAddr, Number(lpAddYesAmount || 0) + Number(lpAddNoAmount || 0))}
                 >
                   Approve USDC for LP
                 </button>
               ) : (
                 <button
                   className="btn btn-primary w100"
-                  disabled={!mktAddr || !walletAddress || addLpPending || addLpConfirming}
-                  onClick={() => addLiquidity(mktAddr, Number(lpAddAmount))}
+                  disabled={!mktAddr || !walletAddress || lpAddTotalWei === 0n || addLpPending || addLpConfirming}
+                  onClick={() =>
+                    addLiquidityAsymmetric(
+                      mktAddr,
+                      Number(lpAddYesAmount || 0),
+                      Number(lpAddNoAmount || 0),
+                      0,
+                      0
+                    )
+                  }
                 >
-                  {addLpPending || addLpConfirming ? "Adding..." : "Add Liquidity"}
+                  {addLpPending || addLpConfirming ? "Adding..." : "Add Asymmetric Liquidity"}
                 </button>
               )}
               {addLpError && (
@@ -658,20 +730,38 @@ function MarketDetailPage({ market, onBack }) {
                 </div>
               </div>
 
-              <label className="inp-label" style={{ marginTop: 12 }}>Remove Liquidity (%)</label>
-              <input
-                type="range"
-                className="price-slider"
-                min={1}
-                max={100}
-                value={lpRemovePct}
-                onChange={(e) => setLpRemovePct(Number(e.target.value))}
-              />
-              <div className="limit-price-row">
-                <span className="limit-price-label">Withdraw {lpRemovePct}%</span>
-                <span className="limit-price-label" style={{ color: "var(--muted)" }}>
-                  {lpRemovePct * 100} bps
+              <label className="inp-label lp-info-label" style={{ marginTop: 12 }}>
+                Remove Liquidity (shares)
+                <span className="info-wrap">
+                  <span className="info-dot" aria-label="Liquidity removal info">i</span>
+                  <span className="info-bubble">
+                    Asymmetric withdrawal burns YES and NO LP shares independently.
+                    <br />
+                    This gives full control of your liquidity profile: reduce one side, keep the other.
+                    <br />
+                    Burning more minority-side shares reduces contrarian yield exposure.
+                    <br />
+                    Burning more majority-side shares increases relative minority exposure.
+                  </span>
                 </span>
+              </label>
+              <div className="trade-stats">
+                <div>
+                  <span>Burn YES shares</span>
+                  <input
+                    className="inp"
+                    value={lpBurnYesShares}
+                    onChange={(e) => setLpBurnYesShares(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <span>Burn NO shares</span>
+                  <input
+                    className="inp"
+                    value={lpBurnNoShares}
+                    onChange={(e) => setLpBurnNoShares(e.target.value)}
+                  />
+                </div>
               </div>
               <div className="trade-stats">
                 <div>
@@ -687,10 +777,18 @@ function MarketDetailPage({ market, onBack }) {
               </div>
               <button
                 className="btn btn-primary w100"
-                disabled={!mktAddr || !walletAddress || rmLpPending || rmLpConfirming}
-                onClick={() => removeLiquidity(mktAddr, lpRemovePct * 100)}
+                disabled={!mktAddr || !walletAddress || (lpBurnYesWei === 0n && lpBurnNoWei === 0n) || rmLpPending || rmLpConfirming}
+                onClick={() =>
+                  removeLiquidityAsymmetric(
+                    mktAddr,
+                    Number(lpBurnYesShares || 0),
+                    Number(lpBurnNoShares || 0),
+                    0,
+                    0
+                  )
+                }
               >
-                {rmLpPending || rmLpConfirming ? "Removing..." : "Remove Liquidity"}
+                {rmLpPending || rmLpConfirming ? "Removing..." : "Remove Asymmetric Liquidity"}
               </button>
               {rmLpError && (
                 <div className="ob-notice" style={{ color: "var(--red)", marginTop: 8 }}>

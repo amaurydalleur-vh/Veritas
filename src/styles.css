@@ -537,6 +537,61 @@ body {
 }
 .limit-price-label { color: var(--soft); }
 
+.lp-info-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.info-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.info-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  color: var(--muted);
+  background: var(--surface-2);
+  font-size: 10px;
+  line-height: 14px;
+  text-align: center;
+  cursor: help;
+  font-weight: 700;
+}
+
+.info-bubble {
+  position: absolute;
+  left: 22px;
+  top: -4px;
+  width: 320px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--ink);
+  font-size: 12px;
+  line-height: 1.45;
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 400;
+  border-radius: 8px;
+  box-shadow: 0 10px 26px rgba(0, 19, 48, 0.16);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.14s ease;
+  z-index: 30;
+}
+
+.info-wrap:hover .info-bubble,
+.info-wrap:focus-within .info-bubble {
+  opacity: 1;
+  visibility: visible;
+}
+
 /* -- Admin Panel -------------------------------------------------------- */
 
 .admin-header { margin-bottom: 32px; }
