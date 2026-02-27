@@ -2,26 +2,27 @@
   "network": "arbitrumSepolia",
   "chainId": 421614,
   "deployer": "0xE31e4d58f58b5E8c485a18A312c902B234a3a514",
-  "deployedAt": "2026-02-26T23:45:27.199Z",
+  "deployedAt": "2026-02-27T08:33:47.949Z",
   "contracts": {
-    "MockUSDC": "0x130327b9Fd50550Ff9d8d8C5105626720006c48D",
-    "MockOracle": "0xd6D3E05E39db9C894FF4C352cd58D131E8F47C46",
-    "VeritasFactory": "0x24afBfC4F5577fC19825c05697EA6cf71c74604C",
-    "VeritasIgnition": "0x50709C990dcd6Ab5ac7d21Cc8b74560506b73812",
-    "VeritasDutchAuction": "0x9d78F6598E837DC8010D2f480593f4F2c31a8647"
+    "MockUSDC": "0xA7E8C5369ddC016Fcb5b24f1C1e4c5116A6E8A7C",
+    "MockOracle": "0xdb44e0275e5b5667e51893bF13dd78368E864CFd",
+    "VeritasFactory": "0x1AD2193F49C43458cb77e6e0F3Eb87fa147777f1",
+    "VeritasIgnition": "0xAbF4AaC1b970C1950b88Bae299f6112EE18F3628",
+    "VeritasDutchAuction": "0x3fD6f346af8Cb0Be9D8f4470F13B347B7225eB74",
+    "VeritasOrderBook": "0xadDDc17F5CA8f6700d6F01653558F71f6855e11E"
   },
   "seedMarkets": [
     {
       "question": "Will the Fed cut rates in Q3 2025?",
-      "address": "0x09924FAE627b23c08280fB0EA081bf6019eD53C1"
+      "address": "0x46BA8766A16768252543055f37aaf0b2778a9245"
     },
     {
       "question": "Will ETH exceed $5,000 before Jan 1, 2026?",
-      "address": "0xb747E2993DdcbF3E372f5301eF2395847032Db6E"
+      "address": "0x399e768A73032Ad7F92c2b6E6f34bDF129BEcCF4"
     },
     {
       "question": "Will the US CPI print below 3% in May 2025?",
-      "address": "0x9ccB034f698806eD031b9ec7828CD9a274216D40"
+      "address": "0xd7e4f8C197899b326f07B765538f6008793FF1Ed"
     }
   ]
 }

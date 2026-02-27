@@ -381,6 +381,162 @@ body {
   .mkt-footer { grid-template-columns: 1fr 1fr; }
 }
 
+/* -- Order Book (CLOB) -------------------------------------------------- */
+
+.ob-wrap { font-size: 12px; }
+
+.ob-header {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 4px 0 6px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 2px;
+  text-align: center;
+}
+.ob-header span:first-child { text-align: left; }
+.ob-header span:last-child  { text-align: right; }
+
+.ob-row {
+  display: grid;
+  grid-template-columns: 1fr 48px 1fr;
+  align-items: stretch;
+  min-height: 24px;
+  border-bottom: 1px solid rgba(217,224,234,0.5);
+}
+
+/* YES cell: bar grows from right edge inward, text sits on top */
+.ob-yes-cell {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 3px 8px 3px 4px;
+  overflow: hidden;
+}
+.ob-yes-cell .ob-size-val { position: relative; z-index: 1; font-variant-numeric: tabular-nums; }
+
+/* NO cell: bar grows from left edge inward, text sits on top */
+.ob-no-cell {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 3px 4px 3px 8px;
+  overflow: hidden;
+}
+.ob-no-cell .ob-size-val { position: relative; z-index: 1; font-variant-numeric: tabular-nums; }
+
+/* Depth bar fills */
+.ob-bar {
+  position: absolute;
+  top: 0; bottom: 0;
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+.ob-bar-yes {
+  right: 0;
+  background: rgba(31, 122, 104, 0.14);  /* jade tint */
+}
+.ob-bar-no {
+  left: 0;
+  background: rgba(166, 58, 58, 0.12);   /* red tint */
+}
+
+.ob-price-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--soft);
+  border-left:  1px solid rgba(217,224,234,0.6);
+  border-right: 1px solid rgba(217,224,234,0.6);
+}
+
+.ob-empty {
+  text-align: center;
+  color: var(--muted);
+  font-size: 12px;
+  padding: 20px 0;
+}
+
+/* Open orders list */
+.ob-open-orders { margin-top: 4px; }
+
+.ob-order-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 2px;
+  border-bottom: 1px solid var(--line);
+  color: var(--soft);
+}
+
+.ob-side-badge {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.ob-side-badge.yes { background: rgba(31,122,104,0.12); color: var(--jade); }
+.ob-side-badge.no  { background: rgba(166,58,58,0.10);  color: var(--red); }
+
+.ob-order-meta { font-size: 12px; }
+.ob-order-id   { font-size: 11px; color: var(--muted); margin-left: auto; margin-right: 4px; }
+
+.ob-notice {
+  font-size: 12px;
+  color: var(--muted);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin-bottom: 12px;
+  line-height: 1.5;
+}
+
+/* Trade sidebar: Market / Limit sub-tabs */
+.trade-subtabs {
+  display: flex;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 14px;
+}
+.subtab-btn {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 7px 4px;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+.subtab-btn:hover { background: var(--surface-2); }
+.subtab-btn.active { background: var(--accent); color: #fff; }
+
+/* Limit order price slider */
+.price-slider {
+  width: 100%;
+  accent-color: var(--accent);
+  margin-bottom: 6px;
+  cursor: pointer;
+}
+.limit-price-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  margin-bottom: 10px;
+}
+.limit-price-label { color: var(--soft); }
+
 /* -- Admin Panel -------------------------------------------------------- */
 
 .admin-header { margin-bottom: 32px; }
