@@ -25,11 +25,13 @@ contract VeritasIgnition is Ownable, ReentrancyGuard {
     uint256 public constant GRADUATION_TVL    = 10_000 * 1e6; // $10K USDC
     uint256 public constant GRADUATION_USERS  = 30;
     uint256 public constant MAX_LAUNCH_DAYS   = 30 days;
-    uint256 public constant VESTING_CLIFF     = 14 days;       // post-graduation
+    uint256 public constant VESTING_CLIFF     = 14 days;       // linear vesting window post-graduation
 
     // Virtual liquidity constant (k = 100M) for initial price stability
     // Virtual reserves each side = sqrt(100M) ≈ 10,000 USDC
     uint256 public constant VIRTUAL_RESERVE = 10_000 * 1e6;
+    // Graduation anti-hype shift: move 5% from majority seed side to minority seed side.
+    uint256 public constant MINORITY_INJECTION_BPS = 500;
 
     // ─────────────────────────────────────────────
     // Structs
@@ -47,6 +49,8 @@ contract VeritasIgnition is Ownable, ReentrancyGuard {
         uint256     participants;
         address     market;            // set after graduation
         uint256     graduatedAt;
+        uint256     seedYes;
+        uint256     seedNo;
         // Virtual AMM state (bonding curve before graduation)
         uint256     virtualYes;        // virtual reserve YES
         uint256     virtualNo;         // virtual reserve NO
@@ -68,6 +72,8 @@ contract VeritasIgnition is Ownable, ReentrancyGuard {
 
     // Vesting: tracks when graduation happened for cliff enforcement
     mapping(uint256 => mapping(address => uint256)) public vestedAt;
+    mapping(uint256 => mapping(address => uint256)) public claimedYes;
+    mapping(uint256 => mapping(address => uint256)) public claimedNo;
 
     // ─────────────────────────────────────────────
     // Events
@@ -77,7 +83,9 @@ contract VeritasIgnition is Ownable, ReentrancyGuard {
     event Committed(uint256 indexed id, address user, uint256 amount, bool direction);
     event Graduated(uint256 indexed id, address market);
     event Expired(uint256 indexed id);
+    event Rejected(uint256 indexed id);
     event Refunded(uint256 indexed id, address user, uint256 amount);
+    event VestedClaimed(uint256 indexed id, address user, uint256 sharesYes, uint256 sharesNo);
 
     // ─────────────────────────────────────────────
     // Constructor
@@ -111,6 +119,8 @@ contract VeritasIgnition is Ownable, ReentrancyGuard {
             participants: 0,
             market:       address(0),
             graduatedAt:  0,
+            seedYes:      0,
+            seedNo:       0,
             virtualYes:   VIRTUAL_RESERVE,
             virtualNo:    VIRTUAL_RESERVE
         });
@@ -130,16 +140,20 @@ contract VeritasIgnition is Ownable, ReentrancyGuard {
 
         usdc.safeTransferFrom(msg.sender, address(this), amount);
 
-        // Update virtual AMM
+        // Update virtual AMM from prior state (constant-product invariant).
+        uint256 oldYes = launch.virtualYes;
+        uint256 oldNo  = launch.virtualNo;
+        uint256 k      = oldYes * oldNo;
         if (buyYes) {
-            launch.virtualNo  += amount;
-            // virtualYes decreases (price impact)
-            uint256 k = launch.virtualYes * launch.virtualNo;
-            launch.virtualYes = k / launch.virtualNo;
+            uint256 newNo = oldNo + amount;
+            uint256 newYes = k / newNo;
+            launch.virtualNo  = newNo;
+            launch.virtualYes = newYes;
         } else {
-            launch.virtualYes += amount;
-            uint256 k = launch.virtualYes * launch.virtualNo;
-            launch.virtualNo  = k / launch.virtualYes;
+            uint256 newYes = oldYes + amount;
+            uint256 newNo = k / newYes;
+            launch.virtualYes = newYes;
+            launch.virtualNo  = newNo;
         }
 
         launch.tvl += amount;
@@ -179,8 +193,47 @@ contract VeritasIgnition is Ownable, ReentrancyGuard {
         require(amount > 0, "Nothing to refund");
 
         committed[id][msg.sender] = 0;
+        launch.tvl -= amount;
         usdc.safeTransfer(msg.sender, amount);
         emit Refunded(id, msg.sender, amount);
+    }
+
+    /// @notice Reject an active launch (governance/admin safeguard). Enables refunds.
+    function rejectLaunch(uint256 id) external onlyOwner {
+        Launch storage launch = launches[id];
+        require(launch.status == LaunchStatus.Active, "Not active");
+        launch.status = LaunchStatus.Rejected;
+        emit Rejected(id);
+    }
+
+    /// @notice Claim vested LP shares after graduation (linear vesting over 14 days).
+    function claimVested(uint256 id) external nonReentrant {
+        Launch storage launch = launches[id];
+        require(launch.status == LaunchStatus.Graduated, "Not graduated");
+
+        uint256 deposited = committed[id][msg.sender];
+        require(deposited > 0, "No commitment");
+        require(launch.tvl > 0, "Bad launch TVL");
+
+        uint256 elapsed = block.timestamp - launch.graduatedAt;
+        if (elapsed > VESTING_CLIFF) elapsed = VESTING_CLIFF;
+        uint256 vestedBps = (elapsed * 10_000) / VESTING_CLIFF;
+
+        uint256 totalEntitledYes = (deposited * launch.seedYes) / launch.tvl;
+        uint256 totalEntitledNo  = (deposited * launch.seedNo)  / launch.tvl;
+
+        uint256 vestedYes = (totalEntitledYes * vestedBps) / 10_000;
+        uint256 vestedNo  = (totalEntitledNo  * vestedBps) / 10_000;
+
+        uint256 claimYes = vestedYes - claimedYes[id][msg.sender];
+        uint256 claimNo  = vestedNo  - claimedNo[id][msg.sender];
+        require(claimYes > 0 || claimNo > 0, "Nothing claimable");
+
+        claimedYes[id][msg.sender] += claimYes;
+        claimedNo[id][msg.sender]  += claimNo;
+
+        VeritasMarket(launch.market).transferLPSharesFromAuction(msg.sender, claimYes, claimNo);
+        emit VestedClaimed(id, msg.sender, claimYes, claimNo);
     }
 
     // ─────────────────────────────────────────────
@@ -199,12 +252,48 @@ contract VeritasIgnition is Ownable, ReentrancyGuard {
         launch.status      = LaunchStatus.Graduated;
         launch.graduatedAt = block.timestamp;
 
-        // Approve factory to pull TVL for seed liquidity
+        // Seed the market with 100% of Ignition TVL.
         uint256 tvl = launch.tvl;
+        require(tvl > 1, "Insufficient TVL");
+
+        // Translate virtual state into initial reserve split.
+        uint256 pYes = (launch.virtualNo * 1e18) / (launch.virtualYes + launch.virtualNo);
+        uint256 seedNo  = (tvl * pYes) / 1e18;
+        uint256 seedYes = tvl - seedNo;
+
+        // Ensure both sides have strictly positive seed.
+        if (seedYes == 0) {
+            seedYes = 1;
+            seedNo = tvl - 1;
+        } else if (seedNo == 0) {
+            seedNo = 1;
+            seedYes = tvl - 1;
+        }
+
+        // Minority-side injection at graduation (anti-hype balancing).
+        uint256 injection = (tvl * MINORITY_INJECTION_BPS) / 10_000;
+        if (injection > 0) {
+            if (seedYes > seedNo) {
+                uint256 shift = injection;
+                if (shift >= seedYes) shift = seedYes - 1;
+                seedYes -= shift;
+                seedNo  += shift;
+            } else if (seedNo > seedYes) {
+                uint256 shift = injection;
+                if (shift >= seedNo) shift = seedNo - 1;
+                seedNo  -= shift;
+                seedYes += shift;
+            }
+        }
+
+        launch.seedYes = seedYes;
+        launch.seedNo  = seedNo;
+
+        usdc.approve(address(factory), 0);
         usdc.approve(address(factory), tvl);
 
-        // Create the real market with 30-day duration
-        address market = factory.createMarket(launch.question, 30 days);
+        // Create the real market with 30-day duration and transfer LP shares to this contract.
+        address market = factory.createMarketWithCustomSeed(launch.question, 30 days, seedYes, seedNo);
         launch.market = market;
 
         emit Graduated(id, market);

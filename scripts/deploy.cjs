@@ -67,6 +67,11 @@ async function main() {
   await (await factory.setAuthorizedCreator(dutchAuctionAddress, true)).wait();
   console.log("Dutch Auction registered.");
 
+  // Register Ignition as authorized creator for custom-seed graduation markets
+  console.log("Registering Ignition as authorized creator...");
+  await (await factory.setAuthorizedCreator(ignitionAddress, true)).wait();
+  console.log("Ignition registered.");
+
   // ── 6. Seed 3 example markets ─────────────────────────────────
   console.log("\nSeeding example markets...");
 

@@ -70,6 +70,8 @@ contract VeritasFactory is Ownable {
         usdc.safeTransferFrom(msg.sender, address(this), seedTotal);
         usdc.approve(market, seedTotal);
         VeritasMarket(market).seedLiquidity(address(this), seedLiquidityPerSide, seedLiquidityPerSide);
+        // Transfer the bootstrap LP shares to the caller to avoid locking them in factory.
+        VeritasMarket(market).transferInitialLPShares(msg.sender, seedLiquidityPerSide, seedLiquidityPerSide);
 
         markets.push(market);
         isMarket[market] = true;
@@ -100,9 +102,8 @@ contract VeritasFactory is Ownable {
     }
 
     /// @notice Create a market with custom (asymmetric) seed amounts.
-    ///         Called by the Dutch Auction contract after clearing.
-    ///         LP shares are initially held by the caller (auction contract),
-    ///         then distributed to bidders via transferLPSharesFromAuction.
+    ///         Called by authorized launch engines (e.g. Dutch Auction, Ignition).
+    ///         LP shares are initially moved to the caller, which can then distribute them.
     /// @param question      Market question
     /// @param duration      Seconds until expiry
     /// @param seedYes       USDC seeded into the YES reserve
