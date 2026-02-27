@@ -7,6 +7,33 @@ import { useReadContract, useWriteContract, useWaitForTransactionReceipt } from 
 import { parseUnits, formatUnits } from "viem";
 import { ADDRESSES, ABIS } from "./contracts.js";
 
+const MARKET_ASYM_LP_ABI = [
+  {
+    type: "function",
+    name: "addLiquidityAsymmetric",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "amountYes", type: "uint256" },
+      { name: "amountNo", type: "uint256" },
+      { name: "minSharesYes", type: "uint256" },
+      { name: "minSharesNo", type: "uint256" },
+    ],
+    outputs: [],
+  },
+  {
+    type: "function",
+    name: "removeLiquidityAsymmetric",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "sharesYesToBurn", type: "uint256" },
+      { name: "sharesNoToBurn", type: "uint256" },
+      { name: "minOutYes", type: "uint256" },
+      { name: "minOutNo", type: "uint256" },
+    ],
+    outputs: [],
+  },
+];
+
 // ─── Factory ──────────────────────────────────────────────────────────────
 
 /** Total number of deployed markets */
@@ -168,7 +195,7 @@ export function useAddLiquidityAsymmetric() {
     const minNo = parseUnits(String(minSharesNo), 6);
     writeContract({
       address: marketAddress,
-      abi: ABIS.market,
+      abi: MARKET_ASYM_LP_ABI,
       functionName: "addLiquidityAsymmetric",
       args: [amountYes, amountNo, minYes, minNo],
     });
@@ -202,7 +229,7 @@ export function useRemoveLiquidityAsymmetric() {
     const minNo = parseUnits(String(minOutNo), 6);
     writeContract({
       address: marketAddress,
-      abi: ABIS.market,
+      abi: MARKET_ASYM_LP_ABI,
       functionName: "removeLiquidityAsymmetric",
       args: [sYes, sNo, minYes, minNo],
     });

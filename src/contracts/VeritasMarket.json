@@ -328,6 +328,34 @@
       "type": "function"
     },
     {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "amountYes",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "amountNo",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "minSharesYes",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "minSharesNo",
+          "type": "uint256"
+        }
+      ],
+      "name": "addLiquidityAsymmetric",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
       "inputs": [],
       "name": "createdAt",
       "outputs": [
@@ -630,6 +658,34 @@
         }
       ],
       "name": "removeLiquidity",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "sharesYesToBurn",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "sharesNoToBurn",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "minOutYes",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "minOutNo",
+          "type": "uint256"
+        }
+      ],
+      "name": "removeLiquidityAsymmetric",
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"

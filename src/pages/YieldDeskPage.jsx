@@ -5,6 +5,10 @@ function pct(v) {
   return `${v.toFixed(1)}%`;
 }
 
+function px(v) {
+  return `$${v.toFixed(2)}`;
+}
+
 function usd(v) {
   if (v >= 1_000_000) return `$${(v / 1_000_000).toFixed(2)}M`;
   if (v >= 1_000) return `$${(v / 1_000).toFixed(1)}K`;
@@ -49,8 +53,12 @@ function YieldDeskPage() {
           address: addr,
           question: questions[i] || "Untitled market",
           total,
+          reserveYes: yes,
+          reserveNo: no,
           yesPct,
           noPct,
+          yesPrice: yes / total,
+          noPrice: no / total,
           minoritySide,
           majoritySide,
           minorityYieldWeight,
@@ -60,6 +68,33 @@ function YieldDeskPage() {
       .filter(Boolean)
       .sort((a, b) => b.total - a.total);
   }, [marketsInfo]);
+
+  const snapshot = useMemo(() => {
+    if (!rows.length) {
+      return {
+        reserveMode: "No active reserve data",
+        reserveSkew: "0.0%",
+      };
+    }
+    const totalYes = rows.reduce((acc, r) => acc + r.reserveYes, 0);
+    const totalNo = rows.reduce((acc, r) => acc + r.reserveNo, 0);
+    const total = totalYes + totalNo;
+    const yesShare = total > 0 ? (totalYes / total) * 100 : 50;
+    const noShare = 100 - yesShare;
+    const skew = Math.abs(yesShare - noShare);
+
+    let reserveMode = "Balanced reserve profile";
+    if (skew >= 2) {
+      reserveMode = yesShare > noShare
+        ? "Asymmetric tilt to YES reserves"
+        : "Asymmetric tilt to NO reserves";
+    }
+
+    return {
+      reserveMode,
+      reserveSkew: `${skew.toFixed(1)}%`,
+    };
+  }, [rows]);
 
   return (
     <div className="container page">
@@ -74,16 +109,16 @@ function YieldDeskPage() {
         <div className="section-label">Policy Snapshot</div>
         <div className="stats-inline">
           <div>
-            <label>Current LP Deposit Mode</label>
-            <strong>Balanced 50/50</strong>
+            <label>Current Reserve Profile</label>
+            <strong>{snapshot.reserveMode}</strong>
           </div>
           <div>
             <label>Minority Side Treatment</label>
             <strong>Yield uplift (contrarian)</strong>
           </div>
           <div>
-            <label>Majority Side Treatment</label>
-            <strong>Still yield-positive, lower weight</strong>
+            <label>System Reserve Skew</label>
+            <strong>{snapshot.reserveSkew}</strong>
           </div>
         </div>
       </div>
@@ -95,7 +130,7 @@ function YieldDeskPage() {
             <tr>
               <th>Market</th>
               <th className="r">TVL</th>
-              <th className="r">YES / NO Price</th>
+              <th className="r">YES / NO Price ($)</th>
               <th className="r">Minority Side</th>
               <th className="r">Minority Yield Weight</th>
               <th className="r">Majority Yield Weight</th>
@@ -112,7 +147,7 @@ function YieldDeskPage() {
                   <td>{r.question}</td>
                   <td className="r">{usd(r.total)}</td>
                   <td className="r">
-                    {pct(r.yesPct)} / {pct(r.noPct)}
+                    {px(r.yesPrice)} / {px(r.noPrice)}
                   </td>
                   <td className="r">{r.minoritySide}</td>
                   <td className="r">{pct(r.minorityYieldWeight)}</td>
@@ -128,8 +163,8 @@ function YieldDeskPage() {
         <div className="section-label">Interpretation</div>
         <p className="text-soft">
           Minority yield weight rises when one side reserve becomes relatively thinner. Majority side still earns
-          yield, but at a lower relative weight. With current 50/50 LP entry, your exposure is split across both
-          sides and your realized profile follows market skew over time.
+          yield, but at a lower relative weight. LP entry is asymmetry-capable and reserve profile is updated
+          directly from live on-chain markets (including newly created and graduated markets).
         </p>
       </section>
     </div>

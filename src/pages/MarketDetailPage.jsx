@@ -62,6 +62,11 @@ function MarketDetailPage({ market, onBack }) {
   const [lpAddNoAmount, setLpAddNoAmount] = useState("50");
   const [lpBurnYesShares, setLpBurnYesShares] = useState("0");
   const [lpBurnNoShares, setLpBurnNoShares] = useState("0");
+  const [liveHistory, setLiveHistory] = useState(() => {
+    if (Array.isArray(market.history) && market.history.length > 0) return market.history;
+    const base = Math.round((market.yes ?? 0.5) * 100);
+    return Array(10).fill(base);
+  });
 
   // Open orders (localStorage-backed)
   const [openOrders, setOpenOrders] = useState(() => loadOrders(walletAddress));
@@ -110,13 +115,35 @@ function MarketDetailPage({ market, onBack }) {
     : (market.yes ?? 0.5) * 100;
   const noPct = 100 - yesPct;
 
+  // Reset local sparkline when switching markets.
+  useEffect(() => {
+    if (Array.isArray(market.history) && market.history.length > 0) {
+      setLiveHistory(market.history);
+      return;
+    }
+    const base = Math.round((market.yes ?? 0.5) * 100);
+    setLiveHistory(Array(10).fill(base));
+  }, [market.id, market.address, market.history, market.yes]);
+
+  // Build a lightweight live price series from on-chain implied probability.
+  useEffect(() => {
+    if (!Number.isFinite(yesPct)) return;
+    const point = Math.round(yesPct);
+    setLiveHistory((prev) => {
+      if (prev.length && prev[prev.length - 1] === point) return prev;
+      const next = [...prev, point];
+      if (next.length > 30) next.shift();
+      return next;
+    });
+  }, [yesPct]);
+
   // Derive TVL
   const tvlDisplay = mktAddr && mktInfo
     ? Number((mktInfo[1] ?? 0n) + (mktInfo[2] ?? 0n)) / 1e6
     : (market.tvl ?? 0);
 
-  // History sparkline (mock if no real data)
-  const historyData = market.history ?? Array(10).fill(Math.round(yesPct));
+  // Sparkline history: on-chain markets use live sampled series.
+  const historyData = mktAddr ? liveHistory : (market.history ?? liveHistory);
   const changePct   = ((yesPct / 100 - (historyData[0] ?? 50) / 100) * 100).toFixed(1);
 
   // ─── CLOB: USDC approval ────────────────────────────────────────────────
@@ -640,6 +667,12 @@ function MarketDetailPage({ market, onBack }) {
               {!mktAddr && (
                 <div className="ob-notice">
                   LP actions require an on-chain market. Select one from the Markets page.
+                </div>
+              )}
+              {mktAddr && (
+                <div className="ob-notice">
+                  Configure YES/NO allocation to set your liquidity exposure profile.
+                  Higher minority-side exposure generally increases contrarian yield weight.
                 </div>
               )}
               <label className="inp-label lp-info-label">
