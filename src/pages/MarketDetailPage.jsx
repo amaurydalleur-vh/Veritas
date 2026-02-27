@@ -530,15 +530,13 @@ function MarketDetailPage({ market, onBack }) {
   // ─── AMM minority / majority display ───────────────────────────────────
 
   const isMinority = side === "YES" ? yesPct < 50 : noPct < 50;
-  const apy        = isMinority
-    ? (market.minApy ?? 0)
-    : (market.majApy ?? 0);
   const skewNorm = Math.min(1, Math.abs(yesPct - 50) / 50);
   const estimatedMinorityApy = 4 + (12 * skewNorm);
   const estimatedMajorityApy = Math.max(2, 4 - (2.5 * skewNorm));
   const hasOnchainYieldPolicy = Number(market.minApy ?? 0) > 0 || Number(market.majApy ?? 0) > 0;
   const minorityApyDisplay = Number(market.minApy ?? 0) > 0 ? Number(market.minApy) : estimatedMinorityApy;
   const majorityApyDisplay = Number(market.majApy ?? 0) > 0 ? Number(market.majApy) : estimatedMajorityApy;
+  const expectedApyDisplay = isMinority ? minorityApyDisplay : majorityApyDisplay;
   const minorityYieldWeight = minoritySide === "BALANCED" ? 50 : Math.max(yesPct, noPct);
   const majorityYieldWeight = 100 - minorityYieldWeight;
   const marketBufferPct = Number(marketTreasury.bufferBps ?? 0n) / 100;
@@ -548,6 +546,14 @@ function MarketDetailPage({ market, onBack }) {
   const marketAdapter = marketTreasury.adapter;
   const marketAdapterEnabled = !!marketAdapter && marketAdapter !== "0x0000000000000000000000000000000000000000";
   const orderBookRouterActive = !!orderBookTreasuryRouter && orderBookTreasuryRouter !== "0x0000000000000000000000000000000000000000";
+  const marketExpiryTs = Number(mktInfo?.[4] ?? market.expiresAt ?? 0);
+  const marketEndDate = marketExpiryTs > 0
+    ? new Date(marketExpiryTs * 1000).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      })
+    : null;
 
   // ──────────────────────────────────────────────────────────────────────────
 
@@ -575,6 +581,17 @@ function MarketDetailPage({ market, onBack }) {
             </Badge>
           </div>
           <h1 className="page-title detail-title">{market.question}</h1>
+          <div className="market-meta-row">
+            <div className="market-endline">
+              {marketEndDate ? <>Ends on <strong>{marketEndDate}</strong></> : <span>&nbsp;</span>}
+            </div>
+            <div className="market-apr-top">
+              <span>Minority APR <strong>{fmt.apy(minorityApyDisplay)}</strong></span>
+              <button className="btn btn-ghost market-apr-btn" onClick={() => setTab("lp")}>
+                Add LP
+              </button>
+            </div>
+          </div>
 
           <div className="card chart-card">
             <div className="chart-header">
@@ -943,7 +960,7 @@ function MarketDetailPage({ market, onBack }) {
               <div className="trade-stats">
                 <div>
                   <span>Expected APY</span>
-                  <strong>{fmt.apy(apy)}</strong>
+                  <strong>{fmt.apy(expectedApyDisplay)}</strong>
                 </div>
                 <div>
                   <span>Role</span>
@@ -1225,11 +1242,6 @@ function MarketDetailPage({ market, onBack }) {
                   </span>
                 </span>
               </label>
-              {!marketAdapterEnabled && (
-                <div className="ob-notice" style={{ marginBottom: 10 }}>
-                  Morpho deployment is not configured for this market yet. LP remains fully in local reserves.
-                </div>
-              )}
               <div className="trade-stats">
                 <div>
                   <span>YES side amount</span>
