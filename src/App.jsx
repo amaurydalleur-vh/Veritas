@@ -6,6 +6,7 @@ import LandingPage from "./pages/LandingPage";
 import MarketsPage from "./pages/MarketsPage";
 import MarketDetailPage from "./pages/MarketDetailPage";
 import IgnitionPage from "./pages/IgnitionPage";
+import IgnitionDetailPage from "./pages/IgnitionDetailPage";
 import YieldDeskPage from "./pages/YieldDeskPage";
 import PortfolioPage from "./pages/PortfolioPage";
 import DocsPage from "./pages/DocsPage";
@@ -15,6 +16,7 @@ const PAGE_TO_PATH = {
   landing: "/",
   markets: "/markets",
   ignition: "/ignition",
+  ignitionDetail: "/ignition",
   yieldDesk: "/yield-desk",
   portfolio: "/portfolio",
   docs: "/docs",
@@ -24,6 +26,7 @@ const PAGE_TO_PATH = {
 
 function pathToPage(pathname) {
   const path = pathname.toLowerCase();
+  if (/^\/ignition\/\d+$/.test(path)) return "ignitionDetail";
   if (path === "/admin") return "admin";
   if (path === "/markets") return "markets";
   if (path === "/ignition") return "ignition";
@@ -33,19 +36,28 @@ function pathToPage(pathname) {
   return "landing";
 }
 
+function parseIgnitionId(pathname) {
+  const m = pathname.toLowerCase().match(/^\/ignition\/(\d+)$/);
+  return m ? Number(m[1]) : null;
+}
+
 function App() {
   const [page, setPage] = useState(() => pathToPage(window.location.pathname));
   const [selectedMarket, setSelectedMarket] = useState(null);
+  const [selectedLaunchId, setSelectedLaunchId] = useState(() => parseIgnitionId(window.location.pathname));
 
   useEffect(() => {
-    const onPopState = () => setPage(pathToPage(window.location.pathname));
+    const onPopState = () => {
+      setPage(pathToPage(window.location.pathname));
+      setSelectedLaunchId(parseIgnitionId(window.location.pathname));
+    };
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
   }, []);
 
-  const navigate = (nextPage, { replace = false } = {}) => {
+  const navigate = (nextPage, { replace = false, pathOverride = null } = {}) => {
     setPage(nextPage);
-    const targetPath = PAGE_TO_PATH[nextPage] || "/";
+    const targetPath = pathOverride || PAGE_TO_PATH[nextPage] || "/";
     if (window.location.pathname !== targetPath) {
       if (replace) window.history.replaceState({}, "", targetPath);
       else window.history.pushState({}, "", targetPath);
@@ -88,7 +100,35 @@ function App() {
         />
       );
     }
-    if (page === "ignition") return <IgnitionPage />;
+    if (page === "ignition") {
+      return (
+        <IgnitionPage
+          onOpenLaunch={(launchId) => {
+            setSelectedLaunchId(launchId);
+            navigate("ignitionDetail", { pathOverride: `/ignition/${launchId}` });
+          }}
+        />
+      );
+    }
+    if (page === "ignitionDetail") {
+      return selectedLaunchId !== null ? (
+        <IgnitionDetailPage
+          launchId={selectedLaunchId}
+          onBack={() => navigate("ignition")}
+          onOpenLiveMarket={(market) => {
+            setSelectedMarket(market);
+            navigate("market");
+          }}
+        />
+      ) : (
+        <IgnitionPage
+          onOpenLaunch={(launchId) => {
+            setSelectedLaunchId(launchId);
+            navigate("ignitionDetail", { pathOverride: `/ignition/${launchId}` });
+          }}
+        />
+      );
+    }
     if (page === "yieldDesk") return <YieldDeskPage />;
     if (page === "portfolio") return <PortfolioPage />;
     if (page === "docs") return <DocsPage />;
@@ -106,7 +146,7 @@ function App() {
 
   return (
     <div>
-      <Navbar page={page} onNavigate={navigate} />
+      <Navbar page={page === "ignitionDetail" ? "ignition" : page} onNavigate={navigate} />
       {page !== "landing" && MARKETS.length > 0 ? <Ticker markets={MARKETS} /> : null}
       {content}
     </div>

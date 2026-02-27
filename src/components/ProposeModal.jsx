@@ -41,9 +41,9 @@ function ProposeModal({ onClose }) {
       <div className='modal-card' onClick={e => e.stopPropagation()}>
         <div className='modal-header'>
           <h3>Propose Market</h3>
-          <button className='modal-close' onClick={onClose} type='button'>x</button>
+          <button className='modal-close' onClick={onClose} type='button'>×</button>
         </div>
-        <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
+        <p style={{ fontSize: '0.85rem', color: 'var(--muted)', marginBottom: '1rem' }}>
           Cost: 50 USDC creation fee (non-refundable)
         </p>
 
@@ -57,7 +57,7 @@ function ProposeModal({ onClose }) {
             <label className='trade-label'>
               Market Question
               <textarea
-                placeholder='e.g. Will ETH exceed ,000 before July 1, 2025?'
+                placeholder='e.g. Will ETH exceed $5,000 before July 1, 2026?'
                 value={question}
                 onChange={e => setQuestion(e.target.value)}
                 className='trade-input'

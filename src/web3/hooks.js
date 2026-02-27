@@ -509,6 +509,57 @@ export function useCommit() {
   return { commit, hash, isPending, isConfirming, isSuccess, error };
 }
 
+/** Trigger graduation check for a launch (public) */
+export function useCheckGraduation() {
+  const { writeContract, data: hash, isPending, error } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+
+  const checkGraduation = (launchId) => {
+    writeContract({
+      address: ADDRESSES.ignition,
+      abi: ABIS.ignition,
+      functionName: "checkGraduation",
+      args: [BigInt(launchId)],
+    });
+  };
+
+  return { checkGraduation, hash, isPending, isConfirming, isSuccess, error };
+}
+
+/** Refund committed USDC when launch is expired/rejected */
+export function useIgnitionRefund() {
+  const { writeContract, data: hash, isPending, error } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+
+  const refund = (launchId) => {
+    writeContract({
+      address: ADDRESSES.ignition,
+      abi: ABIS.ignition,
+      functionName: "refund",
+      args: [BigInt(launchId)],
+    });
+  };
+
+  return { refund, hash, isPending, isConfirming, isSuccess, error };
+}
+
+/** Claim vested LP shares after graduation */
+export function useClaimVested() {
+  const { writeContract, data: hash, isPending, error } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+
+  const claimVested = (launchId) => {
+    writeContract({
+      address: ADDRESSES.ignition,
+      abi: ABIS.ignition,
+      functionName: "claimVested",
+      args: [BigInt(launchId)],
+    });
+  };
+
+  return { claimVested, hash, isPending, isConfirming, isSuccess, error };
+}
+
 // ─── Admin (owner-only) ───────────────────────────────────────────────────
 
 /** Read the factory owner address */
