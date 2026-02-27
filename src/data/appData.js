@@ -1,6 +1,7 @@
 export const NAV_PAGES = [
   ["markets", "Markets"],
   ["ignition", "Ignition"],
+  ["yieldDesk", "Yield Desk"],
   ["portfolio", "Portfolio"],
   ["docs", "Litepaper"]
 ];

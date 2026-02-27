@@ -6,6 +6,7 @@ import LandingPage from "./pages/LandingPage";
 import MarketsPage from "./pages/MarketsPage";
 import MarketDetailPage from "./pages/MarketDetailPage";
 import IgnitionPage from "./pages/IgnitionPage";
+import YieldDeskPage from "./pages/YieldDeskPage";
 import PortfolioPage from "./pages/PortfolioPage";
 import DocsPage from "./pages/DocsPage";
 import AdminPage from "./pages/AdminPage";
@@ -14,6 +15,7 @@ const PAGE_TO_PATH = {
   landing: "/",
   markets: "/markets",
   ignition: "/ignition",
+  yieldDesk: "/yield-desk",
   portfolio: "/portfolio",
   docs: "/docs",
   admin: "/admin",
@@ -25,6 +27,7 @@ function pathToPage(pathname) {
   if (path === "/admin") return "admin";
   if (path === "/markets") return "markets";
   if (path === "/ignition") return "ignition";
+  if (path === "/yield-desk") return "yieldDesk";
   if (path === "/portfolio") return "portfolio";
   if (path === "/docs") return "docs";
   return "landing";
@@ -86,6 +89,7 @@ function App() {
       );
     }
     if (page === "ignition") return <IgnitionPage />;
+    if (page === "yieldDesk") return <YieldDeskPage />;
     if (page === "portfolio") return <PortfolioPage />;
     if (page === "docs") return <DocsPage />;
     if (page === "admin") return <AdminPage />;
