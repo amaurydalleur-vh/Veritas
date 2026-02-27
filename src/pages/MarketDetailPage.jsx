@@ -39,6 +39,23 @@ function removeOrder(addr, orderId) {
   localStorage.setItem(LS_KEY(addr), JSON.stringify(all));
 }
 
+const HIST_KEY = (marketAddr) => `veritas_hist_${marketAddr?.toLowerCase()}`;
+
+function loadHistory(marketAddr) {
+  if (!marketAddr) return [];
+  try {
+    const raw = JSON.parse(localStorage.getItem(HIST_KEY(marketAddr)) || "[]");
+    return Array.isArray(raw) ? raw.filter((v) => Number.isFinite(v)) : [];
+  } catch {
+    return [];
+  }
+}
+
+function persistHistory(marketAddr, history) {
+  if (!marketAddr) return;
+  localStorage.setItem(HIST_KEY(marketAddr), JSON.stringify(history.slice(-60)));
+}
+
 // ──────────────────────────────────────────────────────────────────────────
 
 function MarketDetailPage({ market, onBack }) {
@@ -117,25 +134,39 @@ function MarketDetailPage({ market, onBack }) {
 
   // Reset local sparkline when switching markets.
   useEffect(() => {
+    if (mktAddr) {
+      const stored = loadHistory(mktAddr);
+      if (stored.length > 0) {
+        setLiveHistory(stored);
+      } else {
+        const base = Math.round(((market.yes ?? 0.5) * 100) * 10) / 10;
+        const boot = Array(12).fill(base);
+        setLiveHistory(boot);
+        persistHistory(mktAddr, boot);
+      }
+      return;
+    }
     if (Array.isArray(market.history) && market.history.length > 0) {
       setLiveHistory(market.history);
       return;
     }
-    const base = Math.round((market.yes ?? 0.5) * 100);
+    const base = Math.round(((market.yes ?? 0.5) * 100) * 10) / 10;
     setLiveHistory(Array(10).fill(base));
-  }, [market.id, market.address, market.history, market.yes]);
+  }, [mktAddr, market.id, market.history, market.yes]);
 
   // Build a lightweight live price series from on-chain implied probability.
   useEffect(() => {
     if (!Number.isFinite(yesPct)) return;
-    const point = Math.round(yesPct);
+    const point = Math.round(yesPct * 10) / 10;
     setLiveHistory((prev) => {
-      if (prev.length && prev[prev.length - 1] === point) return prev;
-      const next = [...prev, point];
+      const base = prev.length ? prev : [point];
+      if (base[base.length - 1] === point) return base;
+      const next = [...base, point];
       if (next.length > 30) next.shift();
+      if (mktAddr) persistHistory(mktAddr, next);
       return next;
     });
-  }, [yesPct]);
+  }, [yesPct, mktAddr]);
 
   // Derive TVL
   const tvlDisplay = mktAddr && mktInfo
