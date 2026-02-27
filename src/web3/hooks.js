@@ -37,7 +37,7 @@ export function useMarketsInfo(offset = 0, limit = 20) {
     abi: ABIS.factory,
     functionName: "getMarketsInfo",
     args: [BigInt(offset), BigInt(limit)],
-    query: { enabled: !!ADDRESSES.factory, refetchInterval: 10_000 },
+    query: { enabled: !!ADDRESSES.factory, refetchInterval: 3_000 },
   });
 }
 
