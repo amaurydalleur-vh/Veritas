@@ -360,6 +360,123 @@ export function useCreateAuction() {
   return { createAuction, hash, isPending, isConfirming, isSuccess, error };
 }
 
+// ─── Order Book (CLOB) ────────────────────────────────────────────────────
+
+/**
+ * Order book depth for one side of a market across all price levels.
+ * Returns { prices: uint8[], restingUSDC: bigint[] } or undefined while loading.
+ */
+export function useOrderBook(marketAddress, buyYes) {
+  return useReadContract({
+    address: ADDRESSES.orderBook,
+    abi: ABIS.orderBook,
+    functionName: "getOrderBook",
+    args: [marketAddress, buyYes],
+    query: { enabled: !!marketAddress && !!ADDRESSES.orderBook, refetchInterval: 5_000 },
+  });
+}
+
+/** Best YES bid price in the book (highest price) */
+export function useBestYesBid(marketAddress) {
+  return useReadContract({
+    address: ADDRESSES.orderBook,
+    abi: ABIS.orderBook,
+    functionName: "bestYesBid",
+    args: [marketAddress],
+    query: { enabled: !!marketAddress && !!ADDRESSES.orderBook, refetchInterval: 5_000 },
+  });
+}
+
+/** Best NO bid price in the book */
+export function useBestNoBid(marketAddress) {
+  return useReadContract({
+    address: ADDRESSES.orderBook,
+    abi: ABIS.orderBook,
+    functionName: "bestNoBid",
+    args: [marketAddress],
+    query: { enabled: !!marketAddress && !!ADDRESSES.orderBook, refetchInterval: 5_000 },
+  });
+}
+
+/** User's CLOB position (USDC) for a market, for both sides */
+export function useOrderBookPosition(marketAddress, userAddress) {
+  const yes = useReadContract({
+    address: ADDRESSES.orderBook,
+    abi: ABIS.orderBook,
+    functionName: "positionYes",
+    args: [userAddress, marketAddress],
+    query: { enabled: !!marketAddress && !!userAddress && !!ADDRESSES.orderBook },
+  });
+  const no = useReadContract({
+    address: ADDRESSES.orderBook,
+    abi: ABIS.orderBook,
+    functionName: "positionNo",
+    args: [userAddress, marketAddress],
+    query: { enabled: !!marketAddress && !!userAddress && !!ADDRESSES.orderBook },
+  });
+  return { positionYes: yes.data, positionNo: no.data };
+}
+
+/**
+ * Place a limit order on the CLOB.
+ * Caller must first approve USDC to the OrderBook address.
+ *
+ * @param marketAddress  VeritasMarket contract address
+ * @param buyYes         true = buy YES shares, false = buy NO shares
+ * @param price          1–99 (implied probability % = cents per share)
+ * @param sizeUSDC       Numeric USDC amount (e.g. 10 for 10 USDC)
+ */
+export function usePlaceOrder() {
+  const { writeContract, data: hash, isPending, error } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+
+  const placeOrder = (marketAddress, buyYes, price, sizeUSDC) => {
+    const size = parseUnits(String(sizeUSDC), 6);
+    writeContract({
+      address: ADDRESSES.orderBook,
+      abi: ABIS.orderBook,
+      functionName: "placeOrder",
+      args: [marketAddress, buyYes, price, size],
+    });
+  };
+
+  return { placeOrder, hash, isPending, isConfirming, isSuccess, error };
+}
+
+/** Cancel an open limit order and reclaim escrowed USDC */
+export function useCancelOrder() {
+  const { writeContract, data: hash, isPending, error } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+
+  const cancelOrder = (orderId) => {
+    writeContract({
+      address: ADDRESSES.orderBook,
+      abi: ABIS.orderBook,
+      functionName: "cancelOrder",
+      args: [BigInt(orderId)],
+    });
+  };
+
+  return { cancelOrder, hash, isPending, isConfirming, isSuccess, error };
+}
+
+/** Claim settled CLOB position (winnings after market resolution) */
+export function useClaimOrderBookPosition() {
+  const { writeContract, data: hash, isPending, error } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+
+  const claimPosition = (marketAddress) => {
+    writeContract({
+      address: ADDRESSES.orderBook,
+      abi: ABIS.orderBook,
+      functionName: "claimPosition",
+      args: [marketAddress],
+    });
+  };
+
+  return { claimPosition, hash, isPending, isConfirming, isSuccess, error };
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────
 
 /** Format USDC (6 decimals) → human-readable string */

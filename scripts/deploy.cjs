@@ -72,7 +72,15 @@ async function main() {
   await (await factory.setAuthorizedCreator(ignitionAddress, true)).wait();
   console.log("Ignition registered.");
 
-  // ── 6. Seed 3 example markets ─────────────────────────────────
+  // ── 6. VeritasOrderBook ───────────────────────────────────────
+  console.log("Deploying VeritasOrderBook...");
+  const VeritasOrderBook = await hre.ethers.getContractFactory("VeritasOrderBook");
+  const orderBook = await VeritasOrderBook.deploy(usdcAddress, deployer.address);
+  await orderBook.waitForDeployment();
+  const orderBookAddress = await orderBook.getAddress();
+  console.log("VeritasOrderBook deployed:", orderBookAddress);
+
+  // ── 7. Seed 3 example markets ─────────────────────────────────
   console.log("\nSeeding example markets...");
 
   // Approve factory to pull seed liquidity (200 USDC * 3 markets = 600 USDC)
@@ -98,7 +106,7 @@ async function main() {
     console.log("Market created:", marketAddress, "-", m.question);
   }
 
-  // ── 6. Write deployment artifacts ────────────────────────────
+  // ── 8. Write deployment artifacts ────────────────────────────
   const deployment = {
     network:     hre.network.name,
     chainId:     Number((await hre.ethers.provider.getNetwork()).chainId),
@@ -110,6 +118,7 @@ async function main() {
       VeritasFactory:       factoryAddress,
       VeritasIgnition:      ignitionAddress,
       VeritasDutchAuction:  dutchAuctionAddress,
+      VeritasOrderBook:     orderBookAddress,
     },
     seedMarkets: deployedMarkets,
   };
@@ -130,6 +139,7 @@ async function main() {
   await writeABI(hre, "VeritasFactory",       outDir);
   await writeABI(hre, "VeritasIgnition",      outDir);
   await writeABI(hre, "VeritasDutchAuction",  outDir);
+  await writeABI(hre, "VeritasOrderBook",     outDir);
 
   console.log("\n=== DEPLOYMENT COMPLETE ===");
   console.log("Artifacts written to src/contracts/");
@@ -139,6 +149,7 @@ async function main() {
   console.log(`VITE_USDC_ADDRESS=${usdcAddress}`);
   console.log(`VITE_ORACLE_ADDRESS=${oracleAddress}`);
   console.log(`VITE_DUTCH_AUCTION_ADDRESS=${dutchAuctionAddress}`);
+  console.log(`VITE_ORDER_BOOK_ADDRESS=${orderBookAddress}`);
   console.log(`VITE_CHAIN_ID=421614`);
   console.log("\nFaucet test USDC: call usdc.faucet() from your wallet address.");
 }
