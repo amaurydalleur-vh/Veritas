@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "./interfaces/ITreasuryRouter.sol";
 
 /// @title VeritasMarket
 /// @notice Binary prediction market with VALS protection and RWA Gravity redistribution.
@@ -44,6 +45,7 @@ contract VeritasMarket is ReentrancyGuard {
     address public immutable oracle;
     address public immutable factory;
     address public immutable protocol; // receives protocol fees
+    address public treasuryRouter;
 
     string  public question;
     uint256 public createdAt;
@@ -95,6 +97,8 @@ contract VeritasMarket is ReentrancyGuard {
     event Redeemed(address indexed user, uint256 amount);
     event GravityAccrued(uint256 amount);
     event ProtocolFeesWithdrawn(uint256 amount);
+    event TreasuryRouterSet(address indexed router);
+    event IdleSwept(uint256 amount);
 
     // ─────────────────────────────────────────────
     // Modifiers
@@ -352,6 +356,7 @@ contract VeritasMarket is ReentrancyGuard {
         reserveYes            -= outYes;
         reserveNo             -= outNo;
 
+        _ensureLiquidity(outYes + outNo);
         usdc.safeTransfer(msg.sender, outYes + outNo);
         emit LiquidityRemoved(msg.sender, outYes, outNo);
     }
@@ -376,6 +381,7 @@ contract VeritasMarket is ReentrancyGuard {
         payout += lpPayout;
 
         require(payout > 0, "Nothing to redeem");
+        _ensureLiquidity(payout);
         usdc.safeTransfer(msg.sender, payout);
         emit Redeemed(msg.sender, payout);
     }
@@ -487,8 +493,15 @@ contract VeritasMarket is ReentrancyGuard {
         require(msg.sender == protocol, "Not protocol");
         uint256 amount = protocolFees;
         protocolFees = 0;
+        _ensureLiquidity(amount);
         usdc.safeTransfer(protocol, amount);
         emit ProtocolFeesWithdrawn(amount);
+    }
+
+    function _ensureLiquidity(uint256 needed) internal {
+        uint256 bal = usdc.balanceOf(address(this));
+        if (bal >= needed || treasuryRouter == address(0)) return;
+        ITreasuryRouter(treasuryRouter).requestLiquidity(needed - bal, address(this));
     }
 
     // ─────────────────────────────────────────────
@@ -514,6 +527,20 @@ contract VeritasMarket is ReentrancyGuard {
         require(dutchAuction == address(0), "Already set");
         require(_auction != address(0), "Zero address");
         dutchAuction = _auction;
+    }
+
+    function setTreasuryRouter(address router) external onlyFactory {
+        treasuryRouter = router;
+        emit TreasuryRouterSet(router);
+    }
+
+    /// @notice Move idle USDC from market to treasury router.
+    function sweepIdleToRouter(uint256 amount) external onlyFactory {
+        require(treasuryRouter != address(0), "Router not set");
+        require(amount > 0, "Zero amount");
+        usdc.safeIncreaseAllowance(treasuryRouter, amount);
+        ITreasuryRouter(treasuryRouter).depositFromSource(amount);
+        emit IdleSwept(amount);
     }
 
     /// @notice Transfer LP shares from the auction contract to a bidder.

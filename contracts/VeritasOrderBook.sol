@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "./VeritasMarket.sol";
+import "./interfaces/ITreasuryRouter.sol";
 
 interface IVeritasFactoryRegistry {
     function isMarket(address market) external view returns (bool);
@@ -49,6 +50,7 @@ contract VeritasOrderBook is ReentrancyGuard {
     IERC20  public immutable usdc;
     address public immutable factory;
     address public immutable protocol;
+    address public treasuryRouter;
 
     // ─────────────────────────────────────────────
     // Order storage
@@ -121,6 +123,8 @@ contract VeritasOrderBook is ReentrancyGuard {
     event OrderCancelled(uint256 indexed orderId, uint128 refund);
 
     event PositionClaimed(address indexed user, address indexed market, uint256 amount);
+    event TreasuryRouterSet(address indexed router);
+    event IdleSwept(uint256 amount);
 
     // ─────────────────────────────────────────────
     // Constructor
@@ -133,6 +137,22 @@ contract VeritasOrderBook is ReentrancyGuard {
         usdc     = IERC20(_usdc);
         factory  = _factory;
         protocol = _protocol;
+    }
+
+    function setTreasuryRouter(address router) external {
+        require(msg.sender == protocol, "Not protocol");
+        treasuryRouter = router;
+        emit TreasuryRouterSet(router);
+    }
+
+    /// @notice Move idle USDC from order book to treasury router.
+    function sweepIdleToRouter(uint256 amount) external nonReentrant {
+        require(msg.sender == protocol, "Not protocol");
+        require(treasuryRouter != address(0), "Router not set");
+        require(amount > 0, "Zero amount");
+        usdc.safeIncreaseAllowance(treasuryRouter, amount);
+        ITreasuryRouter(treasuryRouter).depositFromSource(amount);
+        emit IdleSwept(amount);
     }
 
     // ─────────────────────────────────────────────
@@ -201,6 +221,7 @@ contract VeritasOrderBook is ReentrancyGuard {
         o.cancelled = true;
 
         uint128 refund = o.size - o.filled;
+        _ensureLiquidity(refund);
         usdc.safeTransfer(msg.sender, refund);
 
         emit OrderCancelled(orderId, refund);
@@ -226,6 +247,7 @@ contract VeritasOrderBook is ReentrancyGuard {
         }
 
         require(payout > 0, "Nothing to claim");
+        _ensureLiquidity(payout);
         usdc.safeTransfer(msg.sender, payout);
 
         emit PositionClaimed(msg.sender, market, payout);
@@ -239,7 +261,14 @@ contract VeritasOrderBook is ReentrancyGuard {
         require(msg.sender == protocol, "Not protocol");
         uint256 amount = feeAccumulator;
         feeAccumulator = 0;
+        _ensureLiquidity(amount);
         usdc.safeTransfer(protocol, amount);
+    }
+
+    function _ensureLiquidity(uint256 needed) internal {
+        uint256 bal = usdc.balanceOf(address(this));
+        if (bal >= needed || treasuryRouter == address(0)) return;
+        ITreasuryRouter(treasuryRouter).requestLiquidity(needed - bal, address(this));
     }
 
     // ─────────────────────────────────────────────
