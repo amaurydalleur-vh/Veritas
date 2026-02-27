@@ -170,51 +170,48 @@ contract VeritasMarket is ReentrancyGuard {
     /// @param amount Total USDC to deposit (split evenly YES/NO)
     function addLiquidity(uint256 amount) external notSettled nonReentrant {
         require(amount > 0, "Zero amount");
-        _accrueGravity();
-
         uint256 half = amount / 2;
         require(half > 0, "Amount too small");
+        _addLiquidityAsymmetric(half, half, 0, 0);
+    }
 
-        usdc.safeTransferFrom(msg.sender, address(this), half * 2);
-
-        // Mint shares proportional to pool share
-        uint256 newSharesYes = (half * totalSharesYes) / reserveYes;
-        uint256 newSharesNo  = (half * totalSharesNo)  / reserveNo;
-
-        sharesYes[msg.sender] += newSharesYes;
-        sharesNo[msg.sender]  += newSharesNo;
-        totalSharesYes        += newSharesYes;
-        totalSharesNo         += newSharesNo;
-
-        reserveYes += half;
-        reserveNo  += half;
-
-        _trackParticipant(msg.sender);
-        emit LiquidityAdded(msg.sender, half, half);
+    /// @notice Add liquidity asymmetrically to YES/NO sides.
+    /// @param amountYes   USDC added to YES reserve
+    /// @param amountNo    USDC added to NO reserve
+    /// @param minSharesYes Minimum YES LP shares expected (slippage protection)
+    /// @param minSharesNo  Minimum NO LP shares expected (slippage protection)
+    function addLiquidityAsymmetric(
+        uint256 amountYes,
+        uint256 amountNo,
+        uint256 minSharesYes,
+        uint256 minSharesNo
+    ) external notSettled nonReentrant {
+        require(amountYes > 0 || amountNo > 0, "Zero amounts");
+        _addLiquidityAsymmetric(amountYes, amountNo, minSharesYes, minSharesNo);
     }
 
     /// @notice Remove liquidity proportionally
     /// @param sharesFractionBps Fraction of your shares to remove (bps, max 10000)
     function removeLiquidity(uint256 sharesFractionBps) external notSettled nonReentrant {
         require(sharesFractionBps > 0 && sharesFractionBps <= 10_000, "Invalid fraction");
-        _accrueGravity();
-
         uint256 sYes = (sharesYes[msg.sender] * sharesFractionBps) / 10_000;
         uint256 sNo  = (sharesNo[msg.sender]  * sharesFractionBps) / 10_000;
-        require(sYes > 0 || sNo > 0, "No shares");
+        _removeLiquidityAsymmetric(sYes, sNo, 0, 0);
+    }
 
-        uint256 outYes = (sYes * reserveYes) / totalSharesYes;
-        uint256 outNo  = (sNo  * reserveNo)  / totalSharesNo;
-
-        sharesYes[msg.sender] -= sYes;
-        sharesNo[msg.sender]  -= sNo;
-        totalSharesYes        -= sYes;
-        totalSharesNo         -= sNo;
-        reserveYes            -= outYes;
-        reserveNo             -= outNo;
-
-        usdc.safeTransfer(msg.sender, outYes + outNo);
-        emit LiquidityRemoved(msg.sender, outYes, outNo);
+    /// @notice Remove liquidity asymmetrically by burning side-specific LP shares.
+    /// @param sharesYesToBurn YES LP shares to burn
+    /// @param sharesNoToBurn  NO LP shares to burn
+    /// @param minOutYes       Minimum YES-side USDC out (slippage protection)
+    /// @param minOutNo        Minimum NO-side USDC out (slippage protection)
+    function removeLiquidityAsymmetric(
+        uint256 sharesYesToBurn,
+        uint256 sharesNoToBurn,
+        uint256 minOutYes,
+        uint256 minOutNo
+    ) external notSettled nonReentrant {
+        require(sharesYesToBurn > 0 || sharesNoToBurn > 0, "No shares");
+        _removeLiquidityAsymmetric(sharesYesToBurn, sharesNoToBurn, minOutYes, minOutNo);
     }
 
     // ─────────────────────────────────────────────
@@ -290,6 +287,73 @@ contract VeritasMarket is ReentrancyGuard {
         } else {
             positionNo[user] += amount;
         }
+    }
+
+    function _addLiquidityAsymmetric(
+        uint256 amountYes,
+        uint256 amountNo,
+        uint256 minSharesYes,
+        uint256 minSharesNo
+    ) internal {
+        _accrueGravity();
+
+        usdc.safeTransferFrom(msg.sender, address(this), amountYes + amountNo);
+
+        uint256 newSharesYes = amountYes > 0
+            ? (reserveYes == 0 || totalSharesYes == 0 ? amountYes : (amountYes * totalSharesYes) / reserveYes)
+            : 0;
+        uint256 newSharesNo = amountNo > 0
+            ? (reserveNo == 0 || totalSharesNo == 0 ? amountNo : (amountNo * totalSharesNo) / reserveNo)
+            : 0;
+
+        require(newSharesYes >= minSharesYes, "YES slippage");
+        require(newSharesNo  >= minSharesNo,  "NO slippage");
+
+        // Avoid dust deposits that mint 0 shares on an active side.
+        if (amountYes > 0) require(newSharesYes > 0, "YES amount too small");
+        if (amountNo > 0)  require(newSharesNo > 0,  "NO amount too small");
+
+        sharesYes[msg.sender] += newSharesYes;
+        sharesNo[msg.sender]  += newSharesNo;
+        totalSharesYes        += newSharesYes;
+        totalSharesNo         += newSharesNo;
+        reserveYes            += amountYes;
+        reserveNo             += amountNo;
+
+        _trackParticipant(msg.sender);
+        emit LiquidityAdded(msg.sender, amountYes, amountNo);
+    }
+
+    function _removeLiquidityAsymmetric(
+        uint256 sharesYesToBurn,
+        uint256 sharesNoToBurn,
+        uint256 minOutYes,
+        uint256 minOutNo
+    ) internal {
+        _accrueGravity();
+
+        require(sharesYes[msg.sender] >= sharesYesToBurn, "Insufficient YES shares");
+        require(sharesNo[msg.sender]  >= sharesNoToBurn,  "Insufficient NO shares");
+
+        uint256 outYes = sharesYesToBurn > 0
+            ? (sharesYesToBurn * reserveYes) / totalSharesYes
+            : 0;
+        uint256 outNo = sharesNoToBurn > 0
+            ? (sharesNoToBurn * reserveNo) / totalSharesNo
+            : 0;
+
+        require(outYes >= minOutYes, "YES out too low");
+        require(outNo  >= minOutNo,  "NO out too low");
+
+        sharesYes[msg.sender] -= sharesYesToBurn;
+        sharesNo[msg.sender]  -= sharesNoToBurn;
+        totalSharesYes        -= sharesYesToBurn;
+        totalSharesNo         -= sharesNoToBurn;
+        reserveYes            -= outYes;
+        reserveNo             -= outNo;
+
+        usdc.safeTransfer(msg.sender, outYes + outNo);
+        emit LiquidityRemoved(msg.sender, outYes, outNo);
     }
 
     /// @notice Redeem winnings after settlement

@@ -150,6 +150,74 @@ export function useRemoveLiquidity() {
   return { removeLiquidity, hash, isPending, isConfirming, isSuccess, error };
 }
 
+/** Add asymmetric LP liquidity with side-specific amounts and min shares */
+export function useAddLiquidityAsymmetric() {
+  const { writeContract, data: hash, isPending, error } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+
+  const addLiquidityAsymmetric = (
+    marketAddress,
+    amountYesUSDC,
+    amountNoUSDC,
+    minSharesYes = 0,
+    minSharesNo = 0
+  ) => {
+    const amountYes = parseUnits(String(amountYesUSDC), 6);
+    const amountNo = parseUnits(String(amountNoUSDC), 6);
+    const minYes = parseUnits(String(minSharesYes), 6);
+    const minNo = parseUnits(String(minSharesNo), 6);
+    writeContract({
+      address: marketAddress,
+      abi: ABIS.market,
+      functionName: "addLiquidityAsymmetric",
+      args: [amountYes, amountNo, minYes, minNo],
+    });
+  };
+
+  return {
+    addLiquidityAsymmetric,
+    hash,
+    isPending,
+    isConfirming,
+    isSuccess,
+    error,
+  };
+}
+
+/** Remove asymmetric LP liquidity with side-specific shares and min outputs */
+export function useRemoveLiquidityAsymmetric() {
+  const { writeContract, data: hash, isPending, error } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+
+  const removeLiquidityAsymmetric = (
+    marketAddress,
+    sharesYes,
+    sharesNo,
+    minOutYes = 0,
+    minOutNo = 0
+  ) => {
+    const sYes = parseUnits(String(sharesYes), 6);
+    const sNo = parseUnits(String(sharesNo), 6);
+    const minYes = parseUnits(String(minOutYes), 6);
+    const minNo = parseUnits(String(minOutNo), 6);
+    writeContract({
+      address: marketAddress,
+      abi: ABIS.market,
+      functionName: "removeLiquidityAsymmetric",
+      args: [sYes, sNo, minYes, minNo],
+    });
+  };
+
+  return {
+    removeLiquidityAsymmetric,
+    hash,
+    isPending,
+    isConfirming,
+    isSuccess,
+    error,
+  };
+}
+
 /** Hook to redeem winnings after settlement */
 export function useRedeem() {
   const { writeContract, data: hash, isPending, error } = useWriteContract();
