@@ -6,6 +6,14 @@ import { fmt } from "../../data/appData";
 function MarketCard({ market, onOpen }) {
   const isIgnition = market.phase === "ignition";
   const progress = isIgnition ? Math.min((market.tvl / market.tvlTarget) * 100, 100) : 0;
+  const hasExpiry = Number(market.expiresAt ?? 0) > 0;
+  const endDate = hasExpiry
+    ? new Date(Number(market.expiresAt) * 1000).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      })
+    : null;
 
   return (
     <article className={`market-card card ${isIgnition ? "ignition" : ""}`} onClick={() => onOpen(market)}>
@@ -14,7 +22,9 @@ function MarketCard({ market, onOpen }) {
           <Badge variant="sky">{market.category}</Badge>
           <Badge variant={isIgnition ? "amber" : "jade"}>{isIgnition ? "Ignition" : "Live"}</Badge>
         </div>
-        <span className="mkt-meta">{market.days}d left</span>
+        <span className="mkt-meta">
+          {hasExpiry ? `Ends ${endDate}` : `${market.days}d left`}
+        </span>
       </div>
       <p className="mkt-q">{market.question}</p>
       <div className="mkt-prices">

@@ -1,5 +1,4 @@
 import React, { useMemo, useState } from "react";
-import { MARKETS } from "../data/appData";
 import MarketCard from "../components/ui/MarketCard";
 import { useMarketsInfo } from "../web3/hooks";
 
@@ -41,6 +40,7 @@ function MarketsPage({ onOpenMarket, onNavigate }) {
         vol: 0,
         skew: Math.round(yes * 100),
         days,
+        expiresAt,
         participants: 0,
         minApy: 0,
         majApy: 0,
@@ -50,7 +50,7 @@ function MarketsPage({ onOpenMarket, onNavigate }) {
     });
   }, [marketsInfo]);
 
-  const mergedMarkets = useMemo(() => [...onchainMarkets, ...MARKETS], [onchainMarkets]);
+  const mergedMarkets = onchainMarkets;
 
   const categories = useMemo(
     () => ["ALL", ...Array.from(new Set(mergedMarkets.map((m) => m.category)))],
@@ -108,6 +108,14 @@ function MarketsPage({ onOpenMarket, onNavigate }) {
           <MarketCard key={market.id} market={market} onOpen={onOpenMarket} />
         ))}
       </div>
+      {rows.length === 0 && (
+        <div className="card" style={{ marginTop: 12, padding: 14 }}>
+          <div className="section-label">No Markets Detected</div>
+          <p className="text-soft" style={{ margin: 0 }}>
+            No live on-chain markets found. Create one from Ignition and it will appear here automatically.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

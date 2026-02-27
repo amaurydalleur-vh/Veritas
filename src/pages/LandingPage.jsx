@@ -104,6 +104,13 @@ function LandingPage({ onNavigate, onOpenMarket }) {
             <MarketCard key={market.id} market={market} onOpen={onOpenMarket} />
           ))}
         </div>
+        {MARKETS.length === 0 && (
+          <div className="card" style={{ marginTop: 12, padding: 14 }}>
+            <p className="text-soft" style={{ margin: 0 }}>
+              Live previews are now sourced from on-chain markets in the Markets page.
+            </p>
+          </div>
+        )}
       </section>
     </div>
   );

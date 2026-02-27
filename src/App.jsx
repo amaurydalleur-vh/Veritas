@@ -107,7 +107,7 @@ function App() {
   return (
     <div>
       <Navbar page={page} onNavigate={navigate} />
-      {page !== "landing" ? <Ticker markets={MARKETS} /> : null}
+      {page !== "landing" && MARKETS.length > 0 ? <Ticker markets={MARKETS} /> : null}
       {content}
     </div>
   );

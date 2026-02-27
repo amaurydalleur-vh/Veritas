@@ -1,8 +1,42 @@
-import React from "react";
-import { MARKETS } from "../data/appData";
+import React, { useMemo } from "react";
+import { useReadContracts } from "wagmi";
+import { ABIS, ADDRESSES } from "../web3/contracts";
+import { useLaunchCount } from "../web3/hooks";
 
 function IgnitionPage() {
-  const ignition = MARKETS.filter((m) => m.phase === "ignition");
+  const { data: launchCount } = useLaunchCount();
+  const count = Number(launchCount ?? 0n);
+  const launchIds = useMemo(
+    () => Array.from({ length: count }, (_, i) => i),
+    [count]
+  );
+  const { data: launchReads } = useReadContracts({
+    contracts: ADDRESSES.ignition
+      ? launchIds.map((id) => ({
+          address: ADDRESSES.ignition,
+          abi: ABIS.ignition,
+          functionName: "getLaunch",
+          args: [BigInt(id)],
+        }))
+      : [],
+    query: {
+      enabled: !!ADDRESSES.ignition && launchIds.length > 0,
+      refetchInterval: 15_000,
+    },
+  });
+
+  const activeIgnition = useMemo(() => {
+    return (launchReads ?? [])
+      .map((entry, idx) => ({
+        id: launchIds[idx],
+        launch: entry?.result ?? entry,
+      }))
+      .filter((row) => row.launch)
+      .filter((row) => {
+        const graduatedAt = Number(row.launch.graduatedAt ?? row.launch[8] ?? 0n);
+        return graduatedAt === 0;
+      });
+  }, [launchReads, launchIds]);
 
   return (
     <div className="container page">
@@ -46,14 +80,20 @@ function IgnitionPage() {
         <aside className="side-stack">
           <article className="card side-card">
             <div className="section-label">Active Ignition Markets</div>
-            {ignition.map((m) => (
-              <div className="ignition-item" key={m.id}>
-                <p>{m.question}</p>
+            {activeIgnition.map((row) => (
+              <div className="ignition-item" key={row.id}>
+                <p>{row.launch.question ?? row.launch[0]}</p>
                 <small>
-                  TVL ${m.tvl.toLocaleString()} / ${m.tvlTarget.toLocaleString()}
+                  TVL ${(Number(row.launch.tvl ?? row.launch[5] ?? 0n) / 1e6).toFixed(2)} USDC ·
+                  Participants {Number(row.launch.participants ?? row.launch[6] ?? 0n)}
                 </small>
               </div>
             ))}
+            {activeIgnition.length === 0 && (
+              <p className="text-soft" style={{ margin: 0 }}>
+                No ignition markets active
+              </p>
+            )}
           </article>
           <article className="card side-card">
             <div className="section-label">How Ignition Works</div>

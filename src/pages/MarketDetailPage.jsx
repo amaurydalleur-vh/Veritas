@@ -9,6 +9,8 @@ import {
   useMarketInfo,
   useImpliedProbability,
   useOrderBookPosition,
+  useRedeem,
+  useTrade,
   useAddLiquidityAsymmetric,
   useRemoveLiquidityAsymmetric,
   useUSDCAllowance,
@@ -39,6 +41,22 @@ function removeOrder(addr, orderId) {
   localStorage.setItem(LS_KEY(addr), JSON.stringify(all));
 }
 
+const ACT_KEY = (addr, marketAddr) =>
+  `veritas_activity_${addr?.toLowerCase() ?? "anon"}_${marketAddr?.toLowerCase() ?? "none"}`;
+
+function loadActivity(addr, marketAddr) {
+  if (!marketAddr) return [];
+  try { return JSON.parse(localStorage.getItem(ACT_KEY(addr, marketAddr)) || "[]"); }
+  catch { return []; }
+}
+
+function persistActivity(addr, marketAddr, entry) {
+  if (!marketAddr) return;
+  const all = loadActivity(addr, marketAddr);
+  all.unshift(entry);
+  localStorage.setItem(ACT_KEY(addr, marketAddr), JSON.stringify(all.slice(0, 40)));
+}
+
 const HIST_KEY = (marketAddr) => `veritas_hist_${marketAddr?.toLowerCase()}`;
 
 function loadHistory(marketAddr) {
@@ -61,6 +79,7 @@ function persistHistory(marketAddr, history) {
 function MarketDetailPage({ market, onBack }) {
   const { address: walletAddress } = useAccount();
   const mktAddr = market?.address;          // undefined for mock markets
+  const txExplorerBase = import.meta.env.VITE_EXPLORER_TX_BASE || "https://sepolia.arbiscan.io/tx/";
 
   // Tabs
   const [tab, setTab]           = useState("trade");
@@ -79,6 +98,7 @@ function MarketDetailPage({ market, onBack }) {
   const [lpAddNoAmount, setLpAddNoAmount] = useState("50");
   const [lpBurnYesShares, setLpBurnYesShares] = useState("0");
   const [lpBurnNoShares, setLpBurnNoShares] = useState("0");
+  const [lastExecutionReceipt, setLastExecutionReceipt] = useState(null);
   const [liveHistory, setLiveHistory] = useState(() => {
     if (Array.isArray(market.history) && market.history.length > 0) return market.history;
     const base = Math.round((market.yes ?? 0.5) * 100);
@@ -87,17 +107,20 @@ function MarketDetailPage({ market, onBack }) {
 
   // Open orders (localStorage-backed)
   const [openOrders, setOpenOrders] = useState(() => loadOrders(walletAddress));
+  const [activity, setActivity] = useState(() => loadActivity(walletAddress, mktAddr));
   const marketOrders = openOrders.filter(
     (o) => mktAddr && o.marketAddress?.toLowerCase() === mktAddr.toLowerCase()
   );
 
   // Refresh orders whenever wallet changes
   useEffect(() => { setOpenOrders(loadOrders(walletAddress)); }, [walletAddress]);
+  useEffect(() => { setActivity(loadActivity(walletAddress, mktAddr)); }, [walletAddress, mktAddr]);
+  useEffect(() => { setLastExecutionReceipt(null); }, [mktAddr]);
 
   // ─── On-chain data ──────────────────────────────────────────────────────
 
   const { data: mktInfo, refetch: refetchMktInfo } = useMarketInfo(mktAddr);
-  const { data: impliedProb } = useImpliedProbability(mktAddr);
+  const { data: impliedProb, refetch: refetchImpliedProb } = useImpliedProbability(mktAddr);
   const { positionYes, positionNo } = useOrderBookPosition(mktAddr, walletAddress);
   const { data: userSharesYes, refetch: refetchUserSharesYes } = useReadContract({
     address: mktAddr,
@@ -199,6 +222,16 @@ function MarketDetailPage({ market, onBack }) {
     try { return parseUnits(lpAddNoAmount || "0", 6); }
     catch { return 0n; }
   }, [lpAddNoAmount]);
+  const tradeAmountWei = useMemo(() => {
+    try { return parseUnits(amount || "0", 6); }
+    catch { return 0n; }
+  }, [amount]);
+  const tradeNotional = Number(tradeAmountWei) / 1e6;
+  const tradeShareOfTvlPct = tvlDisplay > 0 ? (tradeNotional / tvlDisplay) * 100 : 0;
+  const maxTradeNotional = tvlDisplay * 0.2; // Contract hard cap: 20% of pool
+  const circuitBreakerThreshold = tvlDisplay * 0.1; // Large-trade path: 10% of pool
+  const exceedsTradeHardCap = tvlDisplay > 0 && tradeNotional > maxTradeNotional;
+  const isLargeTrade = tvlDisplay > 0 && tradeNotional > circuitBreakerThreshold;
   const lpAddTotalWei = lpAddYesWei + lpAddNoWei;
   const lpBurnYesWei = useMemo(() => {
     try { return parseUnits(lpBurnYesShares || "0", 6); }
@@ -213,6 +246,15 @@ function MarketDetailPage({ market, onBack }) {
     mktAddr
   );
   const needsLpApproval = !!mktAddr && lpAddTotalWei > 0n && (!lpAllowance || lpAllowance < lpAddTotalWei);
+  const needsTradeApproval = !!mktAddr && tradeAmountWei > 0n && (!lpAllowance || lpAllowance < tradeAmountWei);
+  const {
+    trade,
+    hash: tradeHash,
+    isPending: tradePending,
+    isConfirming: tradeConfirming,
+    isSuccess: tradeSuccess,
+    error: tradeError,
+  } = useTrade();
   const {
     addLiquidityAsymmetric,
     isPending: addLpPending,
@@ -227,8 +269,15 @@ function MarketDetailPage({ market, onBack }) {
     isSuccess: rmLpSuccess,
     error: rmLpError,
   } = useRemoveLiquidityAsymmetric();
+  const {
+    redeem,
+    isPending: redeemPending,
+    isConfirming: redeemConfirming,
+    isSuccess: redeemSuccess,
+    error: redeemError,
+  } = useRedeem();
   useEffect(() => {
-    if (!addLpSuccess && !rmLpSuccess) return;
+    if (!addLpSuccess && !rmLpSuccess && !redeemSuccess) return;
     refetchLpAllowance();
     refetchMktInfo();
     refetchUserSharesYes();
@@ -238,6 +287,7 @@ function MarketDetailPage({ market, onBack }) {
   }, [
     addLpSuccess,
     rmLpSuccess,
+    redeemSuccess,
     refetchLpAllowance,
     refetchMktInfo,
     refetchUserSharesYes,
@@ -251,7 +301,66 @@ function MarketDetailPage({ market, onBack }) {
     if (!approveOk) return;
     refetchAllowance();
     refetchLpAllowance();
-  }, [approveOk, refetchAllowance, refetchLpAllowance]);
+    if (pendingTradeAfterApproval.current && mktAddr && walletAddress) {
+      const next = pendingTradeAfterApproval.current;
+      pendingTradeAfterApproval.current = null;
+      pendingTradeMeta.current = {
+        side: next.side,
+        amount: next.amount,
+        priceBefore: yesPct,
+      };
+      trade(mktAddr, next.side === "YES", Number(next.amount || 0), 0n);
+    }
+  }, [approveOk, mktAddr, walletAddress, yesPct, trade, refetchAllowance, refetchLpAllowance]);
+  useEffect(() => {
+    if (!tradeSuccess) return;
+    const run = async () => {
+      let priceAfter = yesPct;
+      try {
+        const refreshed = await refetchImpliedProb();
+        const raw = refreshed?.data;
+        if (raw != null) priceAfter = Number(raw) / 1e16;
+      } catch {
+        // keep fallback to current UI value
+      }
+
+      if (walletAddress && mktAddr && pendingTradeMeta.current) {
+        const priceBefore = Number(pendingTradeMeta.current.priceBefore ?? yesPct);
+        const delta = priceAfter - priceBefore;
+        const receipt = {
+          side: pendingTradeMeta.current.side,
+          amount: pendingTradeMeta.current.amount,
+          priceBefore,
+          priceAfter,
+          delta,
+          txHash: tradeHash,
+          ts: Date.now(),
+        };
+        setLastExecutionReceipt(receipt);
+        persistActivity(walletAddress, mktAddr, {
+          kind: "amm_trade",
+          ...receipt,
+        });
+        setActivity(loadActivity(walletAddress, mktAddr));
+        pendingTradeMeta.current = null;
+      }
+
+      refetchMktInfo();
+      refetchUserSharesYes();
+      refetchUserSharesNo();
+    };
+    run();
+  }, [
+    tradeSuccess,
+    tradeHash,
+    yesPct,
+    walletAddress,
+    mktAddr,
+    refetchImpliedProb,
+    refetchMktInfo,
+    refetchUserSharesYes,
+    refetchUserSharesNo,
+  ]);
 
   // ─── CLOB: Read nextOrderId (to know the ID before placing) ────────────
 
@@ -263,6 +372,8 @@ function MarketDetailPage({ market, onBack }) {
   });
   const pendingOrderId = useRef(null);
   const pendingCancelId = useRef(null);
+  const pendingTradeMeta = useRef(null);
+  const pendingTradeAfterApproval = useRef(null);
 
   // ─── CLOB: Place order ──────────────────────────────────────────────────
 
@@ -293,7 +404,16 @@ function MarketDetailPage({ market, onBack }) {
       price:         limitPrice,
       size:          limitSizeWei.toString(),
     });
+    persistActivity(walletAddress, mktAddr, {
+      kind: "clob_place",
+      side: limitSide,
+      price: limitPrice,
+      amount: Number(limitSize || 0),
+      orderId: pendingOrderId.current,
+      ts: Date.now(),
+    });
     setOpenOrders(loadOrders(walletAddress));
+    setActivity(loadActivity(walletAddress, mktAddr));
     pendingOrderId.current = null;
   }, [placeConfirmed]);
 
@@ -306,6 +426,14 @@ function MarketDetailPage({ market, onBack }) {
   };
   useEffect(() => {
     if (!cancelOk || !walletAddress || !pendingCancelId.current) return;
+    if (mktAddr) {
+      persistActivity(walletAddress, mktAddr, {
+        kind: "clob_cancel",
+        orderId: pendingCancelId.current,
+        ts: Date.now(),
+      });
+      setActivity(loadActivity(walletAddress, mktAddr));
+    }
     removeOrder(walletAddress, pendingCancelId.current);
     setOpenOrders(loadOrders(walletAddress));
     pendingCancelId.current = null;
@@ -325,6 +453,10 @@ function MarketDetailPage({ market, onBack }) {
   const claimable = settled
     ? (outcomeYes ? (positionYes ?? 0n) : (positionNo ?? 0n))
     : 0n;
+  const winningLpShares = settled
+    ? (outcomeYes ? (userSharesYes ?? 0n) : (userSharesNo ?? 0n))
+    : 0n;
+  const losingOutcome = outcomeYes ? "NO" : "YES";
 
   // LP analytics
   const reserveYes = mktInfo?.[1] ?? 0n;
@@ -359,6 +491,14 @@ function MarketDetailPage({ market, onBack }) {
   const apy        = isMinority
     ? (market.minApy ?? 0)
     : (market.majApy ?? 0);
+  const skewNorm = Math.min(1, Math.abs(yesPct - 50) / 50);
+  const estimatedMinorityApy = 4 + (12 * skewNorm);
+  const estimatedMajorityApy = Math.max(2, 4 - (2.5 * skewNorm));
+  const hasOnchainYieldPolicy = Number(market.minApy ?? 0) > 0 || Number(market.majApy ?? 0) > 0;
+  const minorityApyDisplay = Number(market.minApy ?? 0) > 0 ? Number(market.minApy) : estimatedMinorityApy;
+  const majorityApyDisplay = Number(market.majApy ?? 0) > 0 ? Number(market.majApy) : estimatedMajorityApy;
+  const minorityYieldWeight = minoritySide === "BALANCED" ? 50 : Math.max(yesPct, noPct);
+  const majorityYieldWeight = 100 - minorityYieldWeight;
 
   // ──────────────────────────────────────────────────────────────────────────
 
@@ -383,7 +523,7 @@ function MarketDetailPage({ market, onBack }) {
           <div className="card chart-card">
             <div className="chart-header">
               <div>
-                <div className="chart-price">{yesPct.toFixed(0)}¢</div>
+                <div className="chart-price">{yesPct.toFixed(1)}¢</div>
                 <div className={`chart-change ${Number(changePct) >= 0 ? "up" : "down"}`}>
                   {Number(changePct) >= 0 ? "+" : ""}{changePct}c from open
                 </div>
@@ -398,7 +538,7 @@ function MarketDetailPage({ market, onBack }) {
 
           {/* Tabs */}
           <div className="tab-bar">
-            {["trade", "lp", "yield", "oracle"].map((t) => (
+            {["trade", "lp", "yield", "oracle", "claims"].map((t) => (
               <button
                 key={t}
                 className={`tab-btn ${tab === t ? "active" : ""}`}
@@ -436,6 +576,26 @@ function MarketDetailPage({ market, onBack }) {
                   </div>
                 </div>
               )}
+              <div className="section-label" style={{ marginTop: 14, marginBottom: 8 }}>
+                Recent Activity (AMM + Order Book)
+              </div>
+              {activity.length === 0 ? (
+                <div className="ob-notice">No recent executions/actions for this wallet on this market.</div>
+              ) : (
+                <div className="activity-list">
+                  {activity.slice(0, 8).map((a, idx) => (
+                    <div className="activity-row" key={`${a.ts}-${idx}`}>
+                      <span>{new Date(a.ts).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}</span>
+                      <span>
+                        {a.kind === "amm_trade" &&
+                          `AMM BUY ${a.side} $${Number(a.amount || 0).toFixed(2)} (${Number(a.priceBefore ?? 0).toFixed(1)}c→${Number(a.priceAfter ?? 0).toFixed(1)}c)`}
+                        {a.kind === "clob_place" && `CLOB ${a.side} @${a.price}c $${Number(a.amount || 0).toFixed(2)}`}
+                        {a.kind === "clob_cancel" && `CLOB cancel #${a.orderId}`}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
@@ -462,7 +622,19 @@ function MarketDetailPage({ market, onBack }) {
                   <strong>{minoritySide}</strong>
                 </div>
                 <div>
-                  <label>Gravity pool</label>
+                  <label className="lp-info-label">
+                    Gravity pool
+                    <span className="info-wrap">
+                      <span className="info-dot" aria-label="Gravity pool info">i</span>
+                      <span className="info-bubble">
+                        Gravity pool accumulates protocol-side yield and fee routing that is later distributed with minority-weighted logic.
+                        <br />
+                        Price can move after LP changes because reserve imbalance changes implied probability.
+                        <br />
+                        More liquidity on one side generally lowers that side&apos;s scarcity premium and shifts probability.
+                      </span>
+                    </span>
+                  </label>
                   <strong>${(Number(gravityPool) / 1e6).toFixed(2)}</strong>
                 </div>
                 <div>
@@ -476,19 +648,29 @@ function MarketDetailPage({ market, onBack }) {
           {tab === "yield" && (
             <div className="card tab-card">
               <div className="section-label">Minority Yield Breakdown</div>
+              {!hasOnchainYieldPolicy && (
+                <div className="ob-notice" style={{ marginBottom: 10 }}>
+                  Yield is currently shown as a live estimate from market imbalance until explicit APY policy values are published.
+                </div>
+              )}
               <div className="stats-inline">
                 <div>
                   <label>Minority APY</label>
-                  <strong>{fmt.apy(market.minApy ?? 0)}</strong>
+                  <strong>{fmt.apy(minorityApyDisplay)}</strong>
                 </div>
                 <div>
                   <label>Majority APY</label>
-                  <strong>{fmt.apy(market.majApy ?? 0)}</strong>
+                  <strong>{fmt.apy(majorityApyDisplay)}</strong>
                 </div>
                 <div>
                   <label>Settlement Days</label>
                   <strong>{market.days ?? "—"}</strong>
                 </div>
+              </div>
+              <div className="ob-notice" style={{ marginTop: 10 }}>
+                Minority side: <strong>{minoritySide}</strong>. Current yield-weight split proxy:
+                <strong> {minorityYieldWeight.toFixed(1)}% minority / {majorityYieldWeight.toFixed(1)}% majority</strong>.
+                Majority remains yield-positive, with lower relative weight under skew.
               </div>
             </div>
           )}
@@ -504,11 +686,157 @@ function MarketDetailPage({ market, onBack }) {
               </div>
             </div>
           )}
+
+          {tab === "claims" && (
+            <div className="card tab-card">
+              <div className="section-label">Settlement and Claims</div>
+              {settled ? (
+                <>
+                  <div className="ob-notice">
+                    Market is settled to <strong>{outcomeYes ? "YES" : "NO"}</strong>.
+                    Winning claims are now enabled for both AMM/LP and CLOB positions.
+                  </div>
+                  <div className="stats-inline">
+                    <div>
+                      <label>AMM/LP winning shares</label>
+                      <strong>{(Number(winningLpShares) / 1e6).toFixed(2)}</strong>
+                    </div>
+                    <div>
+                      <label>CLOB claimable payout</label>
+                      <strong>${(Number(claimable) / 1e6).toFixed(2)}</strong>
+                    </div>
+                    <div>
+                      <label>Losing side</label>
+                      <strong>{losingOutcome}</strong>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="ob-notice">
+                  Claim actions unlock after settlement is published by the oracle and accepted on-chain.
+                </div>
+              )}
+            </div>
+          )}
         </section>
 
         {/* ── Right: Trade sidebar ───────────────────────────────────────── */}
         <aside className="card trade-card">
-          <h3>{tab === "lp" ? "Liquidity Provision Console" : "Trade"}</h3>
+          <h3>
+            {tab === "lp"
+              ? "Liquidity Provision Console"
+              : tab === "yield"
+                ? "Yield Snapshot"
+                : tab === "oracle"
+                  ? "Oracle"
+              : tab === "claims"
+                ? "Settlement and Claims"
+                : "Trade"}
+          </h3>
+
+          {settled && (
+            <div className="claim-block">
+              <div className="section-label">Settlement and Claims</div>
+              <div className="ob-notice">
+                Outcome: <strong>{outcomeYes ? "YES" : "NO"}</strong>
+              </div>
+
+              <div className="trade-stats">
+                <div>
+                  <span>AMM/LP winning shares</span>
+                  <strong>{(Number(winningLpShares) / 1e6).toFixed(2)}</strong>
+                </div>
+                <div>
+                  <span>CLOB claimable payout</span>
+                  <strong>${(Number(claimable) / 1e6).toFixed(2)}</strong>
+                </div>
+              </div>
+
+              <button
+                className="btn btn-primary w100"
+                disabled={!mktAddr || !walletAddress || redeemPending || redeemConfirming}
+                onClick={() => redeem(mktAddr)}
+              >
+                {redeemPending || redeemConfirming ? "Claiming..." : "Claim AMM / LP Payout"}
+              </button>
+              {redeemError && (
+                <div className="ob-notice" style={{ color: "var(--red)", marginTop: 8 }}>
+                  {redeemError.shortMessage ?? redeemError.message}
+                </div>
+              )}
+              {redeemSuccess && (
+                <div className="ob-notice" style={{ color: "var(--jade)", marginTop: 8 }}>
+                  AMM/LP payout claimed.
+                </div>
+              )}
+
+              <button
+                className="btn btn-primary w100"
+                style={{ marginTop: 8 }}
+                disabled={!mktAddr || !walletAddress || claimable === 0n || claimPending || claimConfirming}
+                onClick={() => claimPosition(mktAddr)}
+              >
+                {claimPending || claimConfirming ? "Claiming..." : "Claim CLOB Payout"}
+              </button>
+              {claimError && (
+                <div className="ob-notice" style={{ color: "var(--red)", marginTop: 8 }}>
+                  {claimError.shortMessage ?? claimError.message}
+                </div>
+              )}
+              {claimSuccess && (
+                <div className="ob-notice" style={{ color: "var(--jade)", marginTop: 8 }}>
+                  CLOB payout claimed.
+                </div>
+              )}
+            </div>
+          )}
+
+          {tab === "yield" && (
+            <>
+              {!hasOnchainYieldPolicy && (
+                <div className="ob-notice">
+                  APY values are estimated from reserve imbalance until a market-specific policy is published on-chain.
+                </div>
+              )}
+              <div className="trade-stats">
+                <div>
+                  <span>Current minority side</span>
+                  <strong>{minoritySide}</strong>
+                </div>
+                <div>
+                  <span>Minority APY</span>
+                  <strong>{fmt.apy(minorityApyDisplay)}</strong>
+                </div>
+                <div>
+                  <span>Majority APY</span>
+                  <strong>{fmt.apy(majorityApyDisplay)}</strong>
+                </div>
+              </div>
+            </>
+          )}
+
+          {tab === "oracle" && (
+            <div className="trade-stats">
+              <div>
+                <span>Pyth Network</span>
+                <strong>Active</strong>
+              </div>
+              <div>
+                <span>Chainlink</span>
+                <strong>Active</strong>
+              </div>
+              <div>
+                <span>Dispute Layer</span>
+                <strong>Standby</strong>
+              </div>
+            </div>
+          )}
+
+          {tab === "claims" && !settled && (
+            <div className="ob-notice">
+              This market is not settled yet. Claim actions will appear automatically once oracle settlement is confirmed on-chain.
+            </div>
+          )}
 
           {/* Market / Limit sub-tabs */}
           {tab === "trade" && (
@@ -531,6 +859,11 @@ function MarketDetailPage({ market, onBack }) {
           {/* ── Market Order (AMM) ───────────────────────────────────────── */}
           {tab === "trade" && tradeMode === "market" && (
             <>
+              {!mktAddr && (
+                <div className="ob-notice">
+                  Market orders require an on-chain market. Select one from the Markets page.
+                </div>
+              )}
               <div className="trade-side">
                 <button
                   className={`btn btn-yes ${side === "YES" ? "active" : ""}`}
@@ -565,7 +898,82 @@ function MarketDetailPage({ market, onBack }) {
                   <strong>{yesPct.toFixed(0)}¢ YES</strong>
                 </div>
               </div>
-              <button className="btn btn-primary w100">Preview Order</button>
+              <div className="ob-notice" style={{ marginTop: -4 }}>
+                Size vs TVL: <strong>{tradeShareOfTvlPct.toFixed(2)}%</strong>.
+                Large pools may show limited visible cent movement per trade.
+              </div>
+              {isLargeTrade && !exceedsTradeHardCap && (
+                <div className="ob-notice" style={{ marginTop: 8 }}>
+                  Large trade path (&gt;10% TVL): VALS circuit-breaker timing may apply briefly.
+                </div>
+              )}
+              {exceedsTradeHardCap && (
+                <div className="ob-notice" style={{ color: "var(--red)", marginTop: 8 }}>
+                  Trade exceeds VALS hard cap (20% of pool). Max now: ${maxTradeNotional.toFixed(2)}.
+                </div>
+              )}
+              {needsTradeApproval ? (
+                <button
+                  className="btn btn-primary w100"
+                  disabled={!mktAddr || !walletAddress || tradeAmountWei === 0n || exceedsTradeHardCap}
+                  onClick={() => {
+                    pendingTradeAfterApproval.current = {
+                      side,
+                      amount: Number(amount || 0),
+                    };
+                    approve(mktAddr, amount || "0");
+                  }}
+                >
+                  Approve USDC and Execute
+                </button>
+              ) : (
+                <button
+                  className="btn btn-primary w100"
+                  disabled={!mktAddr || !walletAddress || tradeAmountWei === 0n || exceedsTradeHardCap || tradePending || tradeConfirming}
+                  onClick={() => {
+                    pendingTradeMeta.current = {
+                      side,
+                      amount: Number(amount || 0),
+                      priceBefore: yesPct,
+                    };
+                    trade(mktAddr, side === "YES", Number(amount || 0), 0n);
+                  }}
+                >
+                  {tradePending || tradeConfirming ? "Executing..." : `Buy ${side}`}
+                </button>
+              )}
+              {tradeError && (
+                <div className="ob-notice" style={{ color: "var(--red)", marginTop: 8 }}>
+                  {tradeError.shortMessage ?? tradeError.message}
+                </div>
+              )}
+              {tradeSuccess && (
+                <div className="ob-notice" style={{ color: "var(--jade)", marginTop: 8 }}>
+                  Trade confirmed on-chain.
+                </div>
+              )}
+              {lastExecutionReceipt && (
+                <div className="ob-notice" style={{ marginTop: 8 }}>
+                  <strong>Execution Receipt</strong>
+                  <br />
+                  Side: {lastExecutionReceipt.side} · Size: ${Number(lastExecutionReceipt.amount || 0).toFixed(2)}
+                  <br />
+                  YES price: {Number(lastExecutionReceipt.priceBefore).toFixed(2)}c → {Number(lastExecutionReceipt.priceAfter).toFixed(2)}c
+                  {" "}(
+                  {lastExecutionReceipt.delta >= 0 ? "+" : ""}
+                  {Number(lastExecutionReceipt.delta).toFixed(2)}c)
+                  <br />
+                  Tx:{" "}
+                  <a
+                    href={`${txExplorerBase}${lastExecutionReceipt.txHash || ""}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ fontWeight: 700, textDecoration: "underline" }}
+                  >
+                    {lastExecutionReceipt.txHash || "N/A"}
+                  </a>
+                </div>
+              )}
             </>
           )}
 
@@ -666,30 +1074,6 @@ function MarketDetailPage({ market, onBack }) {
                 </div>
               )}
 
-              {settled && (
-                <>
-                  <div className="ob-notice" style={{ marginTop: 10 }}>
-                    Market settled. Claimable CLOB payout: <strong>${(Number(claimable) / 1e6).toFixed(2)}</strong>
-                  </div>
-                  <button
-                    className="btn btn-primary w100"
-                    disabled={!mktAddr || !walletAddress || claimable === 0n || claimPending || claimConfirming}
-                    onClick={() => claimPosition(mktAddr)}
-                  >
-                    {claimPending || claimConfirming ? "Claiming..." : "Claim CLOB Payout"}
-                  </button>
-                  {claimError && (
-                    <div className="ob-notice" style={{ color: "var(--red)", marginTop: 8 }}>
-                      {claimError.shortMessage ?? claimError.message}
-                    </div>
-                  )}
-                  {claimSuccess && (
-                    <div className="ob-notice" style={{ color: "var(--jade)", marginTop: 8 }}>
-                      CLOB payout claimed.
-                    </div>
-                  )}
-                </>
-              )}
             </>
           )}
 

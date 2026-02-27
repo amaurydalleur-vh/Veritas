@@ -36,7 +36,7 @@ function PortfolioPage() {
                 const market = MARKETS.find((m) => m.id === pos.mktId);
                 return (
                   <tr key={pos.mktId}>
-                    <td>{market?.question.slice(0, 56)}...</td>
+                    <td>{market ? `${market.question.slice(0, 56)}...` : "On-chain market position"}</td>
                     <td>{pos.side}</td>
                     <td className="r">{fmt.usd(pos.value)}</td>
                     <td className="r">{fmt.apy(pos.apy)}</td>
