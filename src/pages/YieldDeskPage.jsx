@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { useMarketsInfo } from "../web3/hooks";
 
 function pct(v) {
@@ -17,6 +17,9 @@ function usd(v) {
 
 function YieldDeskPage() {
   const { data: marketsInfo } = useMarketsInfo(0, 200);
+  const [externalWallets, setExternalWallets] = useState("");
+  const [outsideMajoritySide, setOutsideMajoritySide] = useState("YES");
+  const [outsideThesis, setOutsideThesis] = useState("");
 
   const rows = useMemo(() => {
     if (!marketsInfo) return [];
@@ -96,6 +99,55 @@ function YieldDeskPage() {
     };
   }, [rows]);
 
+  const recommendation = useMemo(() => {
+    const cleanThesis = outsideThesis.trim().toLowerCase();
+    const hedgeSide = outsideMajoritySide === "YES" ? "NO" : "YES";
+
+    if (!rows.length) {
+      return {
+        type: "launch",
+        title: "No active market fit detected",
+        body: "No live on-chain markets are available for the current edge profile. Launch a permissionless edge market through Ignition to hedge external majority exposure and keep yield alignment.",
+      };
+    }
+
+    // Prefer markets where current minority side aligns with the requested hedge side.
+    const aligned = rows
+      .filter((r) => r.minoritySide === hedgeSide)
+      .sort((a, b) => b.minorityYieldWeight - a.minorityYieldWeight);
+
+    const thesisScored = cleanThesis
+      ? rows
+          .map((r) => {
+            const q = r.question.toLowerCase();
+            const tokens = cleanThesis.split(/\s+/).filter((t) => t.length > 3);
+            const score = tokens.reduce((acc, t) => acc + (q.includes(t) ? 1 : 0), 0);
+            return { row: r, score };
+          })
+          .sort((a, b) => b.score - a.score)
+      : [];
+
+    const thesisBest = thesisScored.length > 0 ? thesisScored[0] : null;
+    const best = thesisBest && thesisBest.score > 0
+      ? thesisBest.row
+      : (aligned[0] || rows[0]);
+
+    if (!best) {
+      return {
+        type: "launch",
+        title: "No active market fit detected",
+        body: "No relevant live market was identified for your edge profile. Launch a new market through Ignition and set asymmetric LP around your outside majority risk.",
+      };
+    }
+
+    return {
+      type: "market",
+      title: `Recommended edge market: ${best.question}`,
+      body: `Suggested hedge side: ${hedgeSide}. Current minority side: ${best.minoritySide}. Minority yield weight: ${pct(best.minorityYieldWeight)}.`,
+      market: best,
+    };
+  }, [rows, outsideMajoritySide, outsideThesis]);
+
   return (
     <div className="container page">
       <div className="page-header">
@@ -157,6 +209,76 @@ function YieldDeskPage() {
             )}
           </tbody>
         </table>
+      </section>
+
+      <section className="card tab-card" style={{ marginTop: 12 }}>
+        <div className="section-label">Cross-Venue Position Hedging</div>
+        <p className="text-soft" style={{ marginTop: 6, marginBottom: 10 }}>
+          Institutional hedge assistant for off-platform LP and directional exposure.
+        </p>
+        <div className="stats-inline">
+          <div style={{ minWidth: 260 }}>
+            <label className="inp-label lp-info-label">
+              External LP Wallet Set
+              <span className="info-wrap">
+                <span className="info-dot" aria-label="External LP info">i</span>
+                <span className="info-bubble">
+                  Veritas contrarian yield can be used to hedge majority-leaning external positions.
+                  Register external LP wallets to map exposure and receive hedge-side recommendations.
+                </span>
+              </span>
+            </label>
+            <input
+              className="inp"
+              placeholder="0xabc..., 0xdef..., 0x123..."
+              value={externalWallets}
+              onChange={(e) => setExternalWallets(e.target.value)}
+            />
+          </div>
+          <div style={{ minWidth: 220 }}>
+            <label className="inp-label">Outside Majority Side</label>
+            <div className="trade-side">
+              <button
+                className={`btn btn-yes ${outsideMajoritySide === "YES" ? "active" : ""}`}
+                onClick={() => setOutsideMajoritySide("YES")}
+              >
+                YES Majority
+              </button>
+              <button
+                className={`btn btn-no ${outsideMajoritySide === "NO" ? "active" : ""}`}
+                onClick={() => setOutsideMajoritySide("NO")}
+              >
+                NO Majority
+              </button>
+            </div>
+          </div>
+          <div style={{ minWidth: 280 }}>
+            <label className="inp-label">Outside Market Thesis (optional)</label>
+            <input
+              className="inp"
+              placeholder="Fed rates, ETH, CPI, election..."
+              value={outsideThesis}
+              onChange={(e) => setOutsideThesis(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div className="ob-notice" style={{ marginTop: 10, marginBottom: 0 }}>
+          <strong>{recommendation.title}</strong>
+          <br />
+          {recommendation.body}
+          <div style={{ marginTop: 12 }}>
+            {recommendation.type === "market" ? (
+              <a className="btn btn-primary" href="/markets" style={{ textDecoration: "none" }}>
+                Open Markets and Edge Position
+              </a>
+            ) : (
+              <a className="btn btn-primary" href="/ignition" style={{ textDecoration: "none" }}>
+                Edge Yourself Permissionlessly via Ignition
+              </a>
+            )}
+          </div>
+        </div>
       </section>
 
       <section className="card tab-card" style={{ marginTop: 12 }}>
