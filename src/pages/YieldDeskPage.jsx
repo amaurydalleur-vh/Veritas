@@ -184,7 +184,7 @@ function YieldDeskPage() {
         <div className="stats-inline" style={{ marginTop: 8 }}>
           <div>
             <label>Idle Capital Policy</label>
-            <strong>{treasuryAdapterOn ? "Tokenized-bond deployed" : "Local reserve only"}</strong>
+            <strong>{treasuryAdapterOn ? "Morpho deployed" : "Local reserve only"}</strong>
           </div>
           <div>
             <label>Liquid Safety Buffer</label>
@@ -325,7 +325,7 @@ function YieldDeskPage() {
           directly from live on-chain markets (including newly created and graduated markets).
         </p>
         <p className="text-soft" style={{ marginTop: 8 }}>
-          Zero-idle target: collateral can be deployed to instantly redeemable tokenized bonds while maintaining a
+          Zero-idle target: collateral can be deployed to Morpho while maintaining a
           liquid {treasuryBufferPct.toFixed(1)}% buffer for exits, order cancelations, and settlement claims.
         </p>
       </section>

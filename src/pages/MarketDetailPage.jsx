@@ -1009,7 +1009,7 @@ function MarketDetailPage({ market, onBack }) {
               )}
               {mktAddr && (
                 <div className="ob-notice" style={{ marginBottom: 10 }}>
-                  Limit-order escrow can be routed to tokenized-bond collateral with on-demand redemption.
+                  Limit-order escrow can be routed to Morpho with on-demand redemption.
                   Current CLOB router: <strong>{orderBookRouterActive ? shortAddr(orderBookTreasuryRouter) : "Not configured"}</strong>.
                 </div>
               )}
@@ -1129,7 +1129,15 @@ function MarketDetailPage({ market, onBack }) {
                         onChange={(e) => setDeployIdleToBonds(e.target.checked)}
                       />
                       <span>
-                        Deploy idle capital to tokenized bonds ({marketAdapterEnabled ? "instant-redeem mode" : "unavailable"})
+                        Deploy idle capital to Morpho ({marketAdapterEnabled ? "instant-redeem mode" : "unavailable"})
+                      </span>
+                      <span className="info-wrap">
+                        <span className="info-dot" aria-label="Morpho deploy info">i</span>
+                        <span className="info-bubble">
+                          Idle USDC can be deployed into Morpho to generate yield while not actively used in AMM/CLOB.
+                          <br />
+                          Instant redeem is targeted, but effective redemption speed depends on live Morpho liquidity conditions.
+                        </span>
                       </span>
                     </label>
                     <span className="treasury-arrow" aria-hidden="true">→</span>
@@ -1142,7 +1150,7 @@ function MarketDetailPage({ market, onBack }) {
                         <strong>{activeMarketRouter ? shortAddr(activeMarketRouter) : "Not configured"}</strong>
                       </div>
                       <div>
-                        <span>Tokenized bond adapter</span>
+                        <span>Morpho adapter</span>
                         <strong>{marketAdapterEnabled ? shortAddr(marketAdapter) : "Not configured"}</strong>
                       </div>
                       <div>
@@ -1179,13 +1187,13 @@ function MarketDetailPage({ market, onBack }) {
                     As skew increases, minority-side exposure receives higher yield weight.
                     Majority side still earns yield, typically at lower weight.
                     <br />
-                    If treasury routing is enabled, idle collateral can be deployed to tokenized bonds with instant-redeem intent.
+                    If treasury routing is enabled, idle collateral can be deployed to Morpho with instant-redeem intent.
                   </span>
                 </span>
               </label>
               {!marketAdapterEnabled && (
                 <div className="ob-notice" style={{ marginBottom: 10 }}>
-                  Tokenized-bond deployment is not configured for this market yet. LP remains fully in local reserves.
+                  Morpho deployment is not configured for this market yet. LP remains fully in local reserves.
                 </div>
               )}
               <div className="trade-stats">
